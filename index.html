@@ -1,0 +1,876 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f7f6f1" />
+    <title>见字起名 · 以水木，写一生</title>
+    <style>
+      :root {
+        --canvas: #f7f6f1;
+        --surface: #ffffff;
+        --surface-soft: #eef1eb;
+        --surface-blue: #e8f1ef;
+        --ink: #1f2722;
+        --body: #536058;
+        --muted: #88928b;
+        --line: #dfe4de;
+        --line-strong: #cbd5cc;
+        --sage: #617961;
+        --sage-deep: #42624f;
+        --river: #4f7f7b;
+        --river-soft: #dfecea;
+        --coral: #d27e63;
+        --shadow: 0 22px 60px rgba(40, 55, 44, 0.07);
+        --serif: "Noto Serif SC", "Songti SC", "STSong", serif;
+        --sans: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      }
+
+      * { box-sizing: border-box; }
+
+      html { min-width: 320px; scroll-behavior: smooth; }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 88% -12%, rgba(155, 193, 178, 0.18), transparent 29rem),
+          var(--canvas);
+        font-family: var(--sans);
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      button, input, select { font: inherit; }
+
+      button { cursor: pointer; }
+
+      button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible {
+        outline: 3px solid rgba(79, 127, 123, 0.28);
+        outline-offset: 3px;
+      }
+
+      a { color: inherit; }
+
+      .app-shell { min-height: 100vh; }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        max-width: 1500px;
+        margin: 0 auto;
+        padding: 24px 42px 18px;
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 11px;
+        text-decoration: none;
+      }
+
+      .brand-mark {
+        position: relative;
+        width: 30px;
+        height: 30px;
+        border: 1px solid var(--sage);
+        border-radius: 50% 50% 46% 46%;
+        transform: rotate(-18deg);
+      }
+
+      .brand-mark::before, .brand-mark::after {
+        position: absolute;
+        content: "";
+        background: var(--sage);
+      }
+
+      .brand-mark::before { width: 1px; height: 24px; left: 14px; top: 2px; transform: rotate(22deg); }
+      .brand-mark::after { width: 9px; height: 1px; left: 8px; top: 15px; transform: rotate(-24deg); }
+
+      .brand-name { font-family: var(--serif); font-size: 17px; letter-spacing: 0.08em; }
+      .brand-sub { color: var(--muted); font-size: 11px; letter-spacing: 0.12em; }
+
+      .topbar-meta { display: flex; align-items: center; gap: 18px; color: var(--muted); font-size: 12px; }
+
+      .source-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 7px 11px;
+        color: var(--body);
+        background: rgba(255, 255, 255, 0.58);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        text-decoration: none;
+        transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
+      }
+
+      .source-link:hover { background: var(--surface); border-color: var(--line-strong); transform: translateY(-1px); }
+      .source-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--coral); }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: end;
+        gap: 32px;
+        max-width: 1500px;
+        margin: 0 auto;
+        padding: 40px 42px 35px;
+      }
+
+      .hero-kicker {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin: 0 0 17px;
+        color: var(--sage-deep);
+        font-size: 12px;
+        letter-spacing: 0.15em;
+      }
+
+      .hero-kicker::before { content: ""; width: 26px; height: 1px; background: var(--coral); }
+
+      h1, h2, h3, p { margin-top: 0; }
+
+      h1 {
+        max-width: 680px;
+        margin-bottom: 14px;
+        font-family: var(--serif);
+        font-size: clamp(36px, 4.3vw, 68px);
+        font-weight: 400;
+        line-height: 1.08;
+        letter-spacing: -0.045em;
+        text-wrap: balance;
+      }
+
+      h1 em { color: var(--river); font-style: normal; }
+
+      .hero-copy { max-width: 570px; margin-bottom: 0; color: var(--body); font-size: 15px; line-height: 1.75; }
+
+      .hero-aside { display: flex; gap: 12px; padding-bottom: 3px; }
+
+      .hero-stat { min-width: 117px; padding: 14px 16px; border-left: 1px solid var(--line-strong); }
+      .hero-stat strong { display: block; margin-bottom: 3px; font-family: var(--serif); font-size: 28px; font-weight: 400; line-height: 1; }
+      .hero-stat span { color: var(--muted); font-size: 12px; }
+
+      .workspace {
+        display: grid;
+        grid-template-columns: minmax(390px, 1.15fr) minmax(270px, 0.72fr) minmax(330px, 0.95fr);
+        gap: 14px;
+        max-width: 1500px;
+        margin: 0 auto;
+        padding: 0 42px 46px;
+        align-items: start;
+      }
+
+      .panel {
+        min-width: 0;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.76);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        box-shadow: var(--shadow);
+      }
+
+      .panel-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 23px 23px 18px; }
+      .panel-title { margin: 0 0 3px; font-family: var(--serif); font-size: 22px; font-weight: 400; letter-spacing: -0.03em; }
+      .panel-caption { margin: 0; color: var(--muted); font-size: 12px; }
+      .panel-count { display: inline-flex; align-items: center; justify-content: center; min-width: 27px; height: 27px; padding: 0 8px; color: var(--sage-deep); background: var(--surface-soft); border-radius: 999px; font-size: 12px; }
+
+      .library-panel { position: sticky; top: 16px; }
+      .panel-tools { padding: 0 23px 19px; border-bottom: 1px solid var(--line); }
+
+      .segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--surface-soft); border-radius: 11px; }
+      .segmented button { border: 0; border-radius: 8px; padding: 9px 10px; color: var(--muted); background: transparent; transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease; }
+      .segmented button[aria-selected="true"] { color: var(--ink); background: var(--surface); box-shadow: 0 2px 8px rgba(49, 69, 53, 0.08); }
+
+      .search-row { display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 8px; margin-top: 12px; }
+      .field { width: 100%; min-height: 40px; padding: 0 12px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 9px; transition: border-color 160ms ease, box-shadow 160ms ease; }
+      .field::placeholder { color: #9ca49d; }
+      .field:hover { border-color: var(--line-strong); }
+      .field:focus { border-color: var(--river); box-shadow: 0 0 0 3px rgba(79, 127, 123, 0.1); outline: 0; }
+
+      .quick-filters { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+      .filter-pill { border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; color: var(--body); background: transparent; font-size: 12px; }
+      .filter-pill:hover, .filter-pill[aria-pressed="true"] { color: var(--sage-deep); border-color: #a9bbae; background: #edf3ed; }
+
+      .catalog-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 23px 0; color: var(--muted); font-size: 12px; }
+      .catalog-meta strong { color: var(--body); font-weight: 500; }
+
+      .character-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; max-height: 575px; overflow-y: auto; padding: 14px 23px 22px; scrollbar-color: var(--line-strong) transparent; scrollbar-width: thin; }
+      .character-card { position: relative; display: flex; min-height: 89px; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 10px 4px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; transition: border-color 160ms ease, background 160ms ease, transform 160ms ease, box-shadow 160ms ease; }
+      .character-card:hover { border-color: #9db7a9; background: #fbfdfb; transform: translateY(-2px); box-shadow: 0 8px 18px rgba(55, 85, 63, 0.08); }
+      .character-card.is-selected { color: var(--sage-deep); border-color: #9ab8a2; background: #f0f6f0; box-shadow: inset 0 0 0 1px rgba(97, 121, 97, 0.12); }
+      .character-card .glyph { font-family: var(--serif); font-size: 31px; line-height: 1; }
+      .character-card .pinyin { color: var(--muted); font-size: 10px; }
+      .character-card .stroke { color: #a6aea7; font-size: 10px; }
+      .character-card .selected-mark { position: absolute; right: 6px; top: 5px; color: var(--sage); font-size: 10px; opacity: 0; }
+      .character-card.is-selected .selected-mark { opacity: 1; }
+
+      .empty-search { grid-column: 1 / -1; padding: 40px 15px; color: var(--muted); text-align: center; }
+
+      .pool-panel { background: #fafbf8; }
+      .pool-header-note { display: inline-flex; align-items: center; gap: 7px; color: var(--sage-deep); font-size: 12px; }
+      .pool-header-note::before { content: ""; width: 7px; height: 7px; background: var(--sage); border-radius: 50%; }
+      .pool-inner { min-height: 702px; padding: 0 23px 23px; }
+      .pool-list { display: flex; flex-wrap: wrap; gap: 8px; align-content: flex-start; min-height: 145px; padding: 16px; background: var(--surface-soft); border: 1px dashed #c8d5ca; border-radius: 13px; }
+      .pool-chip { display: inline-flex; align-items: center; gap: 7px; padding: 7px 8px 7px 11px; color: var(--ink); background: var(--surface); border: 1px solid #d5e0d6; border-radius: 9px; box-shadow: 0 3px 8px rgba(55, 85, 63, 0.04); }
+      .pool-chip .pool-glyph { font-family: var(--serif); font-size: 22px; line-height: 1; }
+      .pool-chip .pool-element { color: var(--muted); font-size: 10px; }
+      .pool-chip-remove { display: inline-flex; align-items: center; justify-content: center; width: 19px; height: 19px; margin-left: 1px; border: 0; border-radius: 50%; color: var(--muted); background: transparent; }
+      .pool-chip-remove:hover { color: var(--coral); background: #fff0eb; }
+
+      .pool-empty { width: 100%; align-self: center; padding: 12px; color: var(--muted); text-align: center; font-size: 12px; }
+      .pool-empty strong { display: block; margin-bottom: 4px; color: var(--body); font-family: var(--serif); font-size: 18px; font-weight: 400; }
+
+      .pool-section-label { display: flex; align-items: center; justify-content: space-between; margin: 24px 0 11px; color: var(--body); font-size: 12px; }
+      .pool-section-label span:last-child { color: var(--muted); }
+
+      .pool-tips { display: grid; gap: 8px; }
+      .tip-card { display: grid; grid-template-columns: 31px 1fr; gap: 10px; align-items: start; padding: 13px; background: var(--surface); border: 1px solid var(--line); border-radius: 11px; }
+      .tip-index { display: grid; width: 29px; height: 29px; place-items: center; color: var(--sage-deep); background: var(--surface-soft); border-radius: 8px; font-family: var(--serif); font-size: 15px; }
+      .tip-card strong { display: block; margin-bottom: 3px; font-family: var(--serif); font-size: 15px; font-weight: 400; }
+      .tip-card p { margin: 0; color: var(--body); font-size: 11px; line-height: 1.55; }
+
+      .note-box { margin-top: 22px; padding: 13px 14px; color: var(--body); background: #f8f5ee; border: 1px solid #ede4d8; border-radius: 11px; font-size: 11px; line-height: 1.6; }
+      .note-box strong { display: block; margin-bottom: 4px; color: var(--ink); font-weight: 500; }
+
+      .naming-panel { position: sticky; top: 16px; background: var(--ink); color: #f7f6f1; border-color: #303b34; box-shadow: 0 28px 75px rgba(20, 31, 24, 0.14); }
+      .naming-panel .panel-header { padding-bottom: 17px; }
+      .naming-panel .panel-title { color: #f8f8f2; }
+      .naming-panel .panel-caption { color: #9caaa0; }
+      .naming-panel .panel-count { color: #d4e5d4; background: #33483a; }
+      .naming-inner { padding: 0 23px 23px; }
+
+      .name-stage { position: relative; overflow: hidden; padding: 24px 20px 20px; background: #2a3930; border: 1px solid #3b5142; border-radius: 14px; }
+      .name-stage::after { position: absolute; content: ""; right: -20px; top: -40px; width: 140px; height: 140px; border: 1px solid rgba(182, 215, 190, 0.16); border-radius: 50%; box-shadow: 0 0 0 19px rgba(182, 215, 190, 0.04), 0 0 0 40px rgba(182, 215, 190, 0.025); }
+      .stage-toolbar { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+      .stage-label { margin: 0; color: #a9c1af; font-size: 11px; letter-spacing: 0.1em; }
+      .favorite-action { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; color: #b9d1bd; background: rgba(24, 39, 29, 0.28); border: 1px solid #506957; border-radius: 999px; font-size: 11px; transition: color 160ms ease, background 160ms ease, border-color 160ms ease, transform 160ms ease; }
+      .favorite-action:hover { color: #f7faf4; border-color: #83a589; transform: translateY(-1px); }
+      .favorite-action.is-favorited { color: #26382b; background: #c4ddc7; border-color: #c4ddc7; }
+      .favorite-action:disabled { cursor: not-allowed; opacity: 0.45; transform: none; }
+      .favorite-symbol { font-size: 16px; line-height: 1; }
+      .name-display { position: relative; z-index: 1; display: flex; align-items: baseline; gap: 1px; min-height: 76px; font-family: var(--serif); font-size: 49px; line-height: 1; letter-spacing: 0.03em; }
+      .name-display .surname { color: #f9f9f4; }
+      .name-display .name-char { color: #b6d5bd; }
+      .name-display .name-char + .name-char { margin-left: -2px; }
+      .name-display .empty-slot { display: inline-block; width: 42px; height: 48px; margin: 0 2px; border-bottom: 1px dashed #758d7a; }
+      .name-display-note { position: relative; z-index: 1; margin: 14px 0 0; color: #9eafa3; font-size: 11px; }
+
+      .name-controls { margin-top: 18px; }
+      .name-control-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .dark-label { display: block; margin-bottom: 6px; color: #a4b0a6; font-size: 11px; }
+      .dark-field { width: 100%; min-height: 38px; padding: 0 10px; color: #f8f8f2; background: #202b25; border: 1px solid #405044; border-radius: 8px; }
+      .dark-field:focus { border-color: #9ab99f; outline: 0; box-shadow: 0 0 0 3px rgba(154, 185, 159, 0.12); }
+      .length-options { display: flex; gap: 6px; }
+      .length-option { flex: 1; min-height: 38px; border: 1px solid #405044; border-radius: 8px; color: #a4b0a6; background: #202b25; }
+      .length-option[aria-pressed="true"] { color: #1e2a21; background: #b8d2bc; border-color: #b8d2bc; }
+
+      .slot-label { margin: 19px 0 8px; color: #a4b0a6; font-size: 11px; }
+      .slot-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+      .slot-select { min-width: 0; }
+      .slot-select select { width: 100%; min-height: 40px; padding: 0 7px; color: #eef3ed; background: #202b25; border: 1px solid #405044; border-radius: 8px; }
+      .slot-select select:disabled { opacity: 0.38; }
+      .slot-caption { margin-top: 5px; color: #7f8d82; font-size: 10px; text-align: center; }
+
+      .ai-card { margin-top: 18px; padding: 17px; background: #f5f4ed; color: var(--ink); border-radius: 13px; }
+      .ai-card-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+      .ai-card-title { display: flex; align-items: center; gap: 8px; font-family: var(--serif); font-size: 17px; }
+      .ai-symbol { display: grid; width: 23px; height: 23px; place-items: center; color: #f6f7f2; background: var(--river); border-radius: 7px; font-size: 11px; }
+      .ai-status { color: var(--river); font-size: 10px; }
+      .ai-summary { margin: 0 0 12px; color: var(--body); font-size: 12px; line-height: 1.65; }
+      .meaning-list { display: grid; gap: 7px; }
+      .meaning-item { display: grid; grid-template-columns: 29px 1fr; gap: 8px; align-items: start; padding-top: 8px; border-top: 1px solid #e1e3da; }
+      .meaning-glyph { color: var(--river); font-family: var(--serif); font-size: 20px; line-height: 1; }
+      .meaning-item strong { display: block; margin-bottom: 2px; font-size: 11px; font-weight: 500; }
+      .meaning-item p { margin: 0; color: var(--body); font-size: 11px; line-height: 1.55; }
+      .ai-card.loading .ai-status { color: var(--coral); }
+      .ai-card.loading .ai-summary, .ai-card.loading .meaning-list { opacity: 0.45; }
+      .ai-pulse { display: none; }
+      .ai-card.loading .ai-pulse { display: inline-flex; gap: 3px; margin-left: 4px; }
+      .ai-pulse i { width: 4px; height: 4px; border-radius: 50%; background: var(--coral); animation: pulse 900ms infinite ease-in-out; }
+      .ai-pulse i:nth-child(2) { animation-delay: 150ms; }
+      .ai-pulse i:nth-child(3) { animation-delay: 300ms; }
+      @keyframes pulse { 0%, 100% { opacity: 0.25; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-2px); } }
+
+      .ai-action { width: 100%; margin-top: 13px; min-height: 42px; color: #f8fbf7; background: var(--river); border: 0; border-radius: 9px; font-weight: 500; transition: background 160ms ease, transform 160ms ease; }
+      .ai-action:hover { background: #60928d; transform: translateY(-1px); }
+      .ai-action:disabled { cursor: wait; opacity: 0.7; }
+
+      .naming-side { min-width: 0; }
+      .favorites-section { margin-top: 18px; padding: 16px; background: #202b25; border: 1px solid #405044; border-radius: 13px; }
+      .favorites-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 11px; }
+      .favorites-title { display: flex; align-items: center; gap: 7px; margin: 0; color: #eef5ed; font-family: var(--serif); font-size: 16px; font-weight: 400; }
+      .favorites-title::before { content: "♥"; color: #d99a82; font-family: var(--sans); font-size: 12px; }
+      .favorites-count { min-width: 22px; padding: 3px 7px; color: #b9d1bd; background: #33483a; border-radius: 999px; font-size: 10px; text-align: center; }
+      .favorites-list { display: grid; gap: 7px; max-height: 220px; overflow-y: auto; scrollbar-color: #506957 transparent; scrollbar-width: thin; }
+      .favorites-empty { padding: 14px 4px 5px; color: #91a096; font-size: 11px; line-height: 1.6; }
+      .favorite-row { display: grid; grid-template-columns: minmax(0, 1fr) 30px; gap: 5px; align-items: stretch; }
+      .favorite-main { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; padding: 9px 10px; color: #eef5ed; background: #2a3930; border: 1px solid #405044; border-radius: 8px; text-align: left; transition: background 160ms ease, border-color 160ms ease; }
+      .favorite-main:hover { background: #33483a; border-color: #6b8b70; }
+      .favorite-name { overflow: hidden; font-family: var(--serif); font-size: 18px; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+      .favorite-meta { flex: 0 0 auto; color: #9eb2a2; font-size: 10px; }
+      .favorite-remove { display: grid; min-height: 34px; place-items: center; color: #91a096; background: #2a3930; border: 1px solid #405044; border-radius: 8px; font-size: 17px; transition: color 160ms ease, background 160ms ease; }
+      .favorite-remove:hover { color: #f0b19c; background: #49352e; }
+
+      .footer { display: flex; justify-content: space-between; gap: 16px; max-width: 1500px; margin: 0 auto; padding: 0 42px 25px; color: var(--muted); font-size: 11px; }
+      .footer p { margin: 0; }
+      .footer a { color: var(--body); text-underline-offset: 3px; }
+
+      .toast { position: fixed; z-index: 5; right: 22px; bottom: 22px; display: flex; align-items: center; gap: 9px; max-width: min(340px, calc(100vw - 44px)); padding: 12px 15px; color: #eff7ef; background: #2e4235; border: 1px solid #4a654f; border-radius: 10px; box-shadow: 0 12px 30px rgba(24, 40, 28, 0.18); font-size: 12px; opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity 180ms ease, transform 180ms ease; }
+      .toast.is-visible { opacity: 1; transform: translateY(0); }
+      .toast-mark { display: grid; width: 19px; height: 19px; place-items: center; color: #35513d; background: #b8d5bb; border-radius: 50%; font-size: 11px; }
+
+      @media (max-width: 1180px) {
+        .workspace { grid-template-columns: minmax(350px, 1.05fr) minmax(250px, 0.72fr); }
+        .naming-panel { grid-column: 1 / -1; position: static; }
+        .naming-inner { display: grid; grid-template-columns: minmax(260px, 0.85fr) minmax(330px, 1fr); gap: 18px; }
+        .ai-card { margin-top: 0; }
+      }
+
+      @media (max-width: 820px) {
+        .topbar, .hero, .workspace, .footer { padding-left: 22px; padding-right: 22px; }
+        .topbar-meta { gap: 8px; }
+        .topbar-meta > span { display: none; }
+        .hero { grid-template-columns: 1fr; padding-top: 29px; }
+        .hero-aside { justify-content: flex-start; }
+        .workspace { grid-template-columns: 1fr; }
+        .library-panel, .naming-panel { position: static; }
+        .pool-panel { order: 2; }
+        .naming-panel { order: 3; grid-column: auto; }
+        .pool-inner { min-height: auto; }
+        .naming-inner { display: block; }
+        .ai-card { margin-top: 18px; }
+      }
+
+      @media (max-width: 520px) {
+        .topbar { padding-top: 17px; }
+        .brand-sub { display: none; }
+        .source-link { padding: 7px 8px; font-size: 0; }
+        .source-link::after { content: "来源"; font-size: 11px; }
+        .hero { padding-top: 23px; padding-bottom: 25px; }
+        h1 { font-size: clamp(33px, 12vw, 52px); }
+        .hero-copy { font-size: 14px; }
+        .hero-stat { min-width: 0; flex: 1; padding-left: 11px; }
+        .hero-stat strong { font-size: 24px; }
+        .panel-header, .panel-tools, .catalog-meta, .character-grid, .pool-inner, .naming-inner { padding-left: 16px; padding-right: 16px; }
+        .character-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); max-height: 485px; }
+        .search-row { grid-template-columns: 1fr; }
+        .footer { display: block; line-height: 1.7; }
+        .footer p + p { margin-top: 6px; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#top" aria-label="见字起名首页">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span class="brand-name">见字起名</span>
+          <span class="brand-sub">A NAME WITH MEANING</span>
+        </a>
+        <div class="topbar-meta">
+          <span>给名字留一点时间，也给孩子留一份心意</span>
+          <a class="source-link" href="https://www.kangxizidian.com.cn/wuxing/shui_jili.html" target="_blank" rel="noreferrer"><i class="source-dot" aria-hidden="true"></i>康熙字典 · 数据来源</a>
+        </div>
+      </header>
+
+      <main id="top">
+        <section class="hero" aria-labelledby="page-title">
+          <div>
+            <p class="hero-kicker">WATER · WOOD · GOOD CHARACTERS</p>
+            <h1 id="page-title">把一字的心意，<em>写进名字里</em></h1>
+            <p class="hero-copy">从水与木的气韵出发，先挑喜欢的字，再让它们彼此相遇。这里把字的出处、笔画和含义放在一起，让起名从“灵感”开始，也在理解里落地。</p>
+          </div>
+          <div class="hero-aside" aria-label="页面信息">
+            <div class="hero-stat"><strong>水</strong><span>清润 · 流动</span></div>
+            <div class="hero-stat"><strong>木</strong><span>生长 · 坚韧</span></div>
+            <div class="hero-stat"><strong>AI</strong><span>逐名解释</span></div>
+          </div>
+        </section>
+
+        <section class="workspace" aria-label="起名工作台">
+          <section class="panel library-panel" aria-labelledby="library-title">
+            <div class="panel-header">
+              <div><h2 class="panel-title" id="library-title">字库</h2><p class="panel-caption">先选一枚你想留下的字</p></div>
+              <span class="panel-count" id="library-count">—</span>
+            </div>
+            <div class="panel-tools">
+              <div class="segmented" role="tablist" aria-label="五行筛选">
+                <button type="button" role="tab" data-element="water" aria-selected="true">水 · 清润</button>
+                <button type="button" role="tab" data-element="wood" aria-selected="false">木 · 生长</button>
+              </div>
+              <div class="search-row">
+                <label class="sr-only" for="character-search">搜索汉字或拼音</label>
+                <input id="character-search" class="field" type="search" placeholder="搜索汉字 / 拼音 / 含义" autocomplete="off" />
+                <label class="sr-only" for="stroke-select">按笔画筛选</label>
+                <select id="stroke-select" class="field">
+                  <option value="all">全部笔画</option>
+                </select>
+              </div>
+              <div class="quick-filters" aria-label="快捷筛选">
+                <button type="button" class="filter-pill" data-quick="common" aria-pressed="true">起名常用</button>
+                <button type="button" class="filter-pill" data-quick="girl" aria-pressed="false">偏女孩</button>
+                <button type="button" class="filter-pill" data-quick="boy" aria-pressed="false">偏男孩</button>
+              </div>
+            </div>
+            <div class="catalog-meta"><span id="catalog-label">水 · 适合起名的吉字</span><strong id="catalog-count">—</strong></div>
+            <div class="character-grid" id="character-grid" role="list" aria-label="可选汉字"></div>
+          </section>
+
+          <section class="panel pool-panel" aria-labelledby="pool-title">
+            <div class="panel-header">
+              <div><h2 class="panel-title" id="pool-title">候选池</h2><p class="panel-caption">点击字卡，收藏喜欢的字</p></div>
+              <span class="pool-header-note" id="pool-status">已收藏</span>
+            </div>
+            <div class="pool-inner">
+              <div class="pool-list" id="pool-list" aria-live="polite"></div>
+              <div class="pool-section-label"><span>组合灵感</span><span>来自当前候选池</span></div>
+              <div class="pool-tips" id="pool-tips" aria-live="polite"></div>
+              <div class="note-box"><strong>字库说明</strong>当前为按康熙字典五行吉字页整理的本地起名示例快照，不是实时全量抓取。传统五行归类也不等同于医学或科学结论；最终定名，请一起考虑姓氏声调、家族文化和日常书写。</div>
+            </div>
+          </section>
+
+          <section class="panel naming-panel" aria-labelledby="naming-title">
+            <div class="panel-header">
+              <div><h2 class="panel-title" id="naming-title">起名栏</h2><p class="panel-caption">让候选池里的字彼此相遇</p></div>
+              <span class="panel-count" id="name-status">草稿</span>
+            </div>
+            <div class="naming-inner">
+              <div>
+                <div class="name-stage">
+                  <div class="stage-toolbar"><div class="stage-label">CURRENT NAME STUDY</div><button type="button" class="favorite-action" id="favorite-action" aria-pressed="false"><span class="favorite-symbol" aria-hidden="true">♡</span><span>喜欢这个名字</span></button></div>
+                  <div class="name-display" id="name-display" aria-live="polite"></div>
+                  <p class="name-display-note">把喜欢的字放进上面的空位，看看它们合在一起的气质。</p>
+                </div>
+                <div class="name-controls">
+                  <div class="name-control-row">
+                    <div><label class="dark-label" for="surname-input">姓氏</label><input id="surname-input" class="dark-field" value="林" maxlength="2" aria-label="姓氏" /></div>
+                    <div><span class="dark-label">名字字数</span><div class="length-options"><button class="length-option" type="button" data-length="2" aria-pressed="true">两字</button><button class="length-option" type="button" data-length="3" aria-pressed="false">三字</button></div></div>
+                  </div>
+                  <div class="slot-label">从候选池选择顺序</div>
+                  <div class="slot-row" id="slot-row"></div>
+                </div>
+              </div>
+              <div class="naming-side">
+                <div class="ai-card" id="ai-card">
+                  <div class="ai-card-header"><div class="ai-card-title"><span class="ai-symbol">析</span>名字解释</div><span class="ai-status" id="ai-status">AI 已就绪 <span class="ai-pulse"><i></i><i></i><i></i></span></span></div>
+                  <p class="ai-summary" id="ai-summary">输入姓氏并组合候选字后，这里会从字义、五行气质与读音节奏，给你一段不喧哗的解释。</p>
+                  <div class="meaning-list" id="meaning-list"></div>
+                  <button type="button" class="ai-action" id="ai-action">解析这个名字</button>
+                </div>
+                <section class="favorites-section" aria-labelledby="favorites-title">
+                  <div class="favorites-header"><h3 class="favorites-title" id="favorites-title">喜欢的名字</h3><span class="favorites-count" id="favorite-count">0</span></div>
+                  <div class="favorites-list" id="favorites-list" aria-live="polite"></div>
+                </section>
+              </div>
+            </div>
+          </section>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <p>© 2026 见字起名 · 这是一个本地交互原型，AI 解释为演示数据</p>
+        <p>字库来源：<a href="https://www.kangxizidian.com.cn/wuxing/shui.html" target="_blank" rel="noreferrer">五行属水</a> / <a href="https://www.kangxizidian.com.cn/wuxing/mu.html" target="_blank" rel="noreferrer">五行属木</a> · <a href="https://www.kangxizidian.com.cn/wuxing/shui_jili.html" target="_blank" rel="noreferrer">吉字页</a></p>
+      </footer>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"><span class="toast-mark">✓</span><span id="toast-message"></span></div>
+
+    <script>
+      const waterChars = [
+        ['文','wén',4,'文思清雅，温润有光','neutral'], ['云','yún',4,'云气舒展，自在从容','neutral'], ['贝','bèi',4,'珍贵明亮，丰足有福','girl'], ['凤','fèng',4,'高远灵秀，祥瑞自持','girl'],
+        ['水','shuǐ',4,'柔韧包容，顺势而行','neutral'], ['白','bái',5,'清白明净，坦荡纯粹','neutral'], ['禾','hé',5,'丰收安宁，温和踏实','neutral'], ['汇','huì',5,'汇聚美好，胸有万象','neutral'],
+        ['弘','hóng',5,'心量宽广，志向坚定','boy'], ['平','píng',5,'平和从容，安稳自得','neutral'], ['江','jiāng',6,'有江河气魄，也有绵延不息','boy'], ['华','huá',6,'光华内敛，丰盛有成','neutral'],
+        ['冰','bīng',6,'澄澈坚韧，清醒通透','girl'], ['欢','huān',6,'明朗喜悦，常怀欢心','neutral'], ['汐','xī',6,'潮汐有信，静中有力','girl'], ['妍','yán',7,'美好明丽，灵动自信','girl'],
+        ['希','xī',7,'心怀希望，明亮有方向','neutral'], ['沐','mù',7,'沐光而行，被温柔滋养','girl'], ['沛','pèi',7,'丰沛充盈，生机蓬勃','neutral'], ['汶','wèn',7,'水意清柔，内心安静','girl'],
+        ['沂','yí',7,'山水相依，温厚有根','neutral'], ['明','míng',8,'清明聪慧，心有光亮','boy'], ['泽','zé',8,'润泽万物，厚重而不张扬','neutral'], ['雨','yǔ',8,'温柔有恩，滋养万物','girl'],
+        ['和','hé',8,'和而不同，从容有分寸','neutral'], ['泓','hóng',8,'水深而静，心境澄明','boy'], ['学','xué',8,'好学不倦，日日有新','boy'], ['泳','yǒng',8,'自由舒展，勇于向前','boy'],
+        ['恒','héng',9,'持之以恒，坚定长久','boy'], ['洋','yáng',9,'胸襟开阔，海纳百川','boy'], ['洛','luò',9,'温雅聪慧，风骨清朗','girl'], ['洪','hóng',9,'气度宽广，力量充沛','boy'],
+        ['泉','quán',9,'清源不竭，纯粹而有生命力','neutral'], ['海','hǎi',10,'心有大海，眼里有远方','boy'], ['浩','hào',10,'浩然开阔，正直坦荡','boy'], ['涛','tāo',10,'有潮涌的力量，也有向前的勇气','boy'],
+        ['航','háng',10,'向着远方，稳稳启航','boy'], ['润','rùn',10,'温润有度，照拂身边的人','neutral'], ['淇','qí',11,'清澈灵秀，文雅有致','girl'], ['涵','hán',11,'内有丘壑，涵养深厚','neutral'],
+        ['清','qīng',11,'清澈明朗，知进退而有分寸','neutral'], ['雪','xuě',11,'纯净坚韧，轻盈自持','girl'], ['淑','shū',11,'温柔端正，善良有礼','girl'], ['敏','mǐn',11,'聪敏敏锐，反应明快','neutral'],
+        ['鸿','hóng',11,'鸿鹄之志，宽广有为','boy'], ['惠','huì',12,'温厚聪慧，心存善意','girl'], ['博','bó',12,'见识广博，胸怀开阔','boy'], ['斐','fěi',12,'文采斐然，灵气自成','neutral'],
+        ['湘','xiāng',12,'山水清远，温柔坚定','girl'], ['渲','xuàn',12,'色彩丰盈，气韵流动','girl'], ['溪','xī',13,'清灵自在，保持自己的节奏','girl'], ['滢','yíng',13,'水光清澈，明净灵动','girl'],
+        ['熙','xī',14,'光明和乐，明朗有福','neutral'], ['漫','màn',14,'自由舒展，温柔丰沛','girl'], ['澄','chéng',15,'澄澈笃定，内心明净','neutral'], ['潼','tóng',15,'水势丰盈，灵秀有力量','neutral'],
+        ['慧','huì',15,'聪慧通透，温柔而坚定','girl'], ['澜','lán',15,'心有波澜，也有定力','girl'], ['霖','lín',16,'久下之雨，润物无声','neutral'], ['霏','fēi',16,'云气轻盈，气质清柔','girl'],
+        ['凝','níng',16,'专注沉静，温柔有力量','girl'], ['澈','chè',15,'清透坦荡，目光坚定','neutral'], ['濠','háo',17,'深广包容，自在开阔','boy'], ['瀚','hàn',19,'瀚海无边，志向深远','boy'], ['灏','hào',21,'水势浩大，气度开阔','boy']
+      ];
+
+      const woodChars = [
+        ['月','yuè',4,'皎洁温柔，心有光亮','girl'], ['艺','yì',4,'才华与创造力，灵动有趣','neutral'], ['元','yuán',4,'本真有始，元气充盈','neutral'], ['今','jīn',4,'珍惜当下，清醒自在','neutral'],
+        ['东','dōng',5,'向着日出的方向，明朗有志','boy'], ['兰','lán',5,'幽香自持，温雅有品','girl'], ['卉','huì',5,'草木初盛，柔韧有生机','girl'], ['巧','qiǎo',5,'灵巧聪慧，心思细致','girl'],
+        ['仪','yí',5,'端庄有礼，自有分寸','girl'], ['玉','yù',5,'温润珍贵，清澈坚定','neutral'], ['可','kě',5,'明快可亲，温柔可靠','neutral'], ['旭','xù',6,'如日初升，明亮向上','boy'],
+        ['朵','duǒ',6,'柔软盛放，自在可爱','girl'], ['乔','qiáo',6,'高大舒展，清俊有风骨','neutral'], ['吉','jí',6,'吉祥如意，明快利落','neutral'], ['芊','qiān',6,'草木繁盛，轻盈有韧性','girl'],
+        ['尧','yáo',6,'端正高远，谦和有德','boy'], ['权','quán',6,'有判断力，也有担当','boy'], ['芝','zhī',6,'灵秀清芬，质朴有福','girl'], ['庆','qìng',6,'喜庆丰足，心有欢喜','neutral'],
+        ['竹','zhú',6,'虚心坚韧，清雅有节','neutral'], ['芳','fāng',7,'芬芳明朗，温柔自信','girl'], ['岑','cén',7,'静谧有山意，沉稳可靠','neutral'], ['言','yán',7,'言而有信，清晰坦荡','neutral'],
+        ['杉','shān',7,'挺拔清正，向上生长','boy'], ['君','jūn',7,'温润如君，端正有礼','neutral'], ['芸','yún',7,'草木茂盛，勤勉有才','girl'], ['启','qǐ',7,'启程启智，心有开阔处','boy'],
+        ['欣','xīn',8,'欣然明朗，常怀热爱','neutral'], ['枫','fēng',8,'有秋日的丰盛，也有自由的风','neutral'], ['凯','kǎi',8,'凯旋而归，明快坚定','boy'], ['佳','jiā',8,'美好合宜，温柔得体','neutral'],
+        ['茂','mào',8,'草木丰茂，生命力旺盛','boy'], ['奇','qí',8,'独特聪慧，保持好奇','neutral'], ['杭','háng',8,'温润有根，行稳致远','boy'], ['杰','jié',8,'出色卓然，才华有光','boy'],
+        ['若','ruò',8,'从容谦和，清新自然','girl'], ['宜','yí',8,'安适合宜，温暖可靠','girl'], ['荣','róng',9,'草木荣盛，所行皆有收获','neutral'], ['科','kē',9,'求知明理，稳稳成长','boy'],
+        ['珂','kē',9,'清润如玉，明净可亲','girl'], ['奕','yì',9,'神采奕奕，光明舒展','neutral'], ['彦','yàn',9,'才德兼备，温雅有才','boy'], ['柳','liǔ',9,'柔韧有姿，轻盈自在','girl'],
+        ['语','yǔ',9,'有表达力，也有倾听的温柔','girl'], ['贵','guì',9,'珍贵自重，知足有福','neutral'], ['茹','rú',9,'温柔有容，心性坚韧','girl'], ['桥','qiáo',10,'连接彼此，也通向远方','neutral'],
+        ['桐','tóng',10,'梧桐高洁，安静有力量','neutral'], ['健','jiàn',10,'身心健朗，笃定向前','boy'], ['莹','yíng',10,'晶莹明亮，心思纯粹','girl'], ['荷','hé',10,'清雅自持，出尘不染','girl'],
+        ['家','jiā',10,'有归处，也有守护的力量','neutral'], ['桦','huà',10,'洁白挺拔，生命力旺盛','neutral'], ['卿','qīng',10,'温雅亲切，自有风度','girl'], ['莉','lì',10,'清新秀美，明丽可亲','girl'],
+        ['梓','zǐ',11,'有根有本，安静生长','neutral'], ['菲','fēi',11,'芳菲明媚，轻盈有活力','girl'], ['绮','qǐ',11,'美好绮丽，灵气流转','girl'], ['康','kāng',11,'安康顺遂，平和有福','neutral'],
+        ['梦','mèng',11,'心有所向，保有想象力','girl'], ['萌','méng',11,'初生蓬勃，天真可爱','girl'], ['菁','jīng',11,'草木精华，聪慧鲜活','girl'], ['萧','xiāo',11,'清远疏朗，有自己的节奏','neutral'],
+        ['翊','yì',11,'辅翼相成，坚定而善良','boy'], ['菡','hàn',11,'含苞有光，温柔坚韧','girl'], ['皓','hào',12,'明亮洁白，心怀正气','boy'], ['萱','xuān',12,'忘忧安然，柔韧有生机','girl'],
+        ['琴','qín',12,'有审美，也有安静的力量','girl'], ['谦','qiān',12,'谦和自省，越走越远','boy'], ['琳','lín',12,'美玉成林，温润聪慧','girl'], ['琪','qí',12,'美玉珍奇，明净有光','girl'],
+        ['嘉','jiā',14,'美好嘉许，心有善意','neutral'], ['赫','hè',14,'光明显达，自信坦荡','boy'], ['歌','gē',14,'热爱生活，明快自由','girl'], ['蔓','màn',14,'柔韧延展，自在生长','girl'],
+        ['蔼','ǎi',14,'温和亲切，待人有光','neutral'], ['蕙','huì',15,'蕙质兰心，聪敏温柔','girl'], ['憬','jǐng',15,'心有所憬，保持向往','neutral'], ['蕊','ruǐ',15,'花心初绽，柔软有生命力','girl'],
+        ['樱','yīng',15,'明媚灵动，温柔有朝气','girl'], ['薇','wēi',16,'坚韧细腻，清雅自持','girl'], ['橙','chéng',16,'明亮甜润，真诚有活力','neutral'], ['璟','jǐng',16,'玉的光彩，清明坚定','neutral'],
+        ['薪','xīn',16,'薪火相传，持续成长','boy'], ['檀','tán',17,'沉静有香，坚韧有根','neutral'], ['懋','mào',17,'勤勉有成，生命丰盛','boy'], ['藜','lí',18,'朴实坚韧，向光而生','neutral'],
+        ['藤','téng',18,'柔韧攀援，彼此成就','neutral'], ['麒','qí',19,'祥瑞端正，胸有远志','boy'], ['蘅','héng',19,'清芬自持，内在丰盈','girl']
+      ];
+
+      const meaningMap = {
+        '清和': { summary: '清是澄澈与明朗，和是温柔与分寸。这个名字像水面被风轻轻拂过：有自己的清醒，也愿意与世界相处得和顺。', items: [['清','清澈明朗，不浑浊，不喧哗'],['和','和而不同，柔软却有边界']] },
+        '梓沐': { summary: '梓有根，沐有润。一个向下扎根，一个向上承光，合在一起是“被爱滋养，也有自己的生长方向”。', items: [['梓','有根有本，安静生长'],['沐','沐光而行，被温柔滋养']] },
+        '泽林': { summary: '泽是润物无声，林是枝叶相依。水木相逢，寓意心里有丰沛，也有可以慢慢长成的坚韧。', items: [['泽','润泽万物，厚重而不张扬'],['林','成林成荫，生长而有依靠']] },
+        '林清': { summary: '林与清相遇，一边是成片生长的木，一边是澄澈流动的水。读起来清亮，气质安静而有生命力。', items: [['林','草木成林，生长有根'],['清','清澈明朗，知进退而有分寸']] },
+        '林梓': { summary: '林与梓都带着木的根性，名字气质安稳、端正，像把“好好长大”写得具体而温柔。', items: [['林','枝叶相依，安稳有依靠'],['梓','有根有本，安静生长']] },
+        '林沐': { summary: '林木得水而生，沐意为承受洗润与光照。这个名字温柔、干净，也带着持续向上的生命感。', items: [['林','草木成林，生长有根'],['沐','沐光而行，被温柔滋养']] }
+      };
+
+      const allChars = [...waterChars.map(([char, pinyin, strokes, meaning, style]) => ({char, pinyin, strokes, meaning, style, element:'water'})), ...woodChars.map(([char, pinyin, strokes, meaning, style]) => ({char, pinyin, strokes, meaning, style, element:'wood'}))];
+      const STORAGE_KEY = 'jianzidingming-state-v1';
+      const INITIAL_DEMO_POOL = ['清','梓','沐','和'];
+
+      function loadPersistedState() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+          if (!saved || typeof saved !== 'object') return {};
+          const shouldResetSeededDraft = JSON.stringify(saved.pool) === JSON.stringify(INITIAL_DEMO_POOL) && JSON.stringify(saved.nameChars) === JSON.stringify(['清','和']);
+          const favorites = Array.isArray(saved.favorites) ? saved.favorites.map((entry, index) => ({
+            id: typeof entry.id === 'string' ? entry.id : `favorite-${index}-${entry.savedAt || Date.now()}`,
+            name: typeof entry.name === 'string' ? entry.name.slice(0, 12) : '',
+            surname: typeof entry.surname === 'string' ? entry.surname.slice(0, 2) : '',
+            length: entry.length === 3 ? 3 : 2,
+            chars: Array.isArray(entry.chars) ? entry.chars.filter(char => charByGlyph(char)).slice(0, 3) : [],
+            savedAt: Number(entry.savedAt) || Date.now()
+          })).filter(entry => entry.name && entry.chars.length) : null;
+          return {
+            element: saved.element === 'wood' ? 'wood' : 'water',
+            query: typeof saved.query === 'string' ? saved.query : '',
+            stroke: saved.stroke || 'all',
+            quick: ['common', 'girl', 'boy'].includes(saved.quick) ? saved.quick : 'common',
+            pool: shouldResetSeededDraft ? [] : (Array.isArray(saved.pool) ? saved.pool.map(charByGlyph).filter(Boolean) : null),
+            surname: typeof saved.surname === 'string' ? saved.surname.slice(0, 2) : '林',
+            length: saved.length === 3 ? 3 : 2,
+            nameChars: shouldResetSeededDraft ? ['', ''] : (Array.isArray(saved.nameChars) ? saved.nameChars.map(String).slice(0, 3) : null),
+            favorites
+          };
+        } catch (error) {
+          return {};
+        }
+      }
+
+      function persistState() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            element: state.element,
+            query: state.query,
+            stroke: state.stroke,
+            quick: state.quick,
+            pool: state.pool.map(item => item.char),
+            surname: state.surname,
+            length: state.length,
+            nameChars: state.nameChars.slice(0, state.length),
+            favorites: state.favorites.slice(0, 50)
+          }));
+          state.storageReady = true;
+        } catch (error) {
+          const firstFailure = state.storageReady !== false;
+          state.storageReady = false;
+          if (firstFailure && typeof showToast === 'function') showToast('浏览器未允许本地存储，刷新后内容可能丢失');
+        }
+      }
+
+      const savedState = loadPersistedState();
+      const state = {
+        element: savedState.element || 'water',
+        query: savedState.query || '',
+        stroke: savedState.stroke || 'all',
+        quick: savedState.quick || 'common',
+        pool: savedState.pool ?? [],
+        surname: savedState.surname || '林',
+        length: savedState.length || 2,
+        nameChars: savedState.nameChars ?? ['', ''],
+        favorites: savedState.favorites ?? [],
+        loading: false,
+        storageReady: true,
+        toastTimer: null
+      };
+
+      const $ = selector => document.querySelector(selector);
+      const $$ = selector => [...document.querySelectorAll(selector)];
+
+      function getCatalog() {
+        const query = state.query.trim().toLowerCase();
+        return allChars.filter(item => {
+          const matchesElement = item.element === state.element;
+          const matchesStroke = state.stroke === 'all' || item.strokes === Number(state.stroke);
+          const matchesQuery = !query || item.char.includes(query) || item.pinyin.includes(query) || item.meaning.includes(state.query.trim());
+          const matchesQuick = state.quick === 'common' || item.style === state.quick;
+          return matchesElement && matchesStroke && matchesQuery && matchesQuick;
+        });
+      }
+
+      function charByGlyph(char) { return allChars.find(item => item.char === char); }
+
+      function escapeHTML(value) {
+        return String(value).replace(/[&<>"']/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
+      }
+
+      function getCurrentChars() { return state.nameChars.slice(0, state.length); }
+      function getCurrentName() { return `${state.surname}${getCurrentChars().filter(Boolean).join('')}`; }
+      function isCompleteName() { return Boolean(state.surname.trim()) && getCurrentChars().every(Boolean); }
+      function currentFavoriteIndex() { return state.favorites.findIndex(entry => entry.name === getCurrentName()); }
+
+      function renderStrokeOptions() {
+        const strokes = [...new Set(allChars.filter(item => item.element === state.element).map(item => item.strokes))].sort((a,b) => a-b);
+        const select = $('#stroke-select');
+        select.innerHTML = '<option value="all">全部笔画</option>' + strokes.map(stroke => `<option value="${stroke}">${stroke} 画</option>`).join('');
+        select.value = state.stroke;
+      }
+
+      function renderLibrary() {
+        const catalog = getCatalog();
+        const elementLabel = state.element === 'water' ? '水' : '木';
+        $('#library-count').textContent = catalog.length;
+        $('#catalog-count').textContent = `${catalog.length} 枚可选`;
+        $('#catalog-label').textContent = `${elementLabel} · 适合起名的吉字`;
+        $('#character-grid').innerHTML = catalog.length ? catalog.map(item => {
+          const selected = state.pool.some(poolItem => poolItem.char === item.char);
+          return `<button type="button" class="character-card${selected ? ' is-selected' : ''}" data-character="${item.char}" role="listitem" aria-pressed="${selected}" aria-label="${item.char}，${item.pinyin}，${item.strokes}画，${item.meaning}"><span class="selected-mark">✓</span><span class="glyph">${item.char}</span><span class="pinyin">${item.pinyin}</span><span class="stroke">${item.strokes}画</span></button>`;
+        }).join('') : '<div class="empty-search">没有找到匹配的字，换一个笔画或搜索词试试。</div>';
+      }
+
+      function renderPool() {
+        const list = $('#pool-list');
+        if (!state.pool.length) {
+          list.innerHTML = '<div class="pool-empty"><strong>候选池还是空的</strong>从左侧点选一枚字，它会留在这里。</div>';
+        } else {
+          list.innerHTML = state.pool.map(item => `<div class="pool-chip"><span class="pool-glyph">${item.char}</span><span class="pool-element">${item.element === 'water' ? '水' : '木'}</span><button type="button" class="pool-chip-remove" data-remove="${item.char}" aria-label="移除${item.char}">×</button></div>`).join('');
+        }
+        $('#pool-status').textContent = state.pool.length ? `${state.pool.length} 枚已收藏` : '等待收藏';
+        $('#name-status').textContent = `${state.surname}${getCurrentChars().filter(Boolean).join('')}`;
+        renderSlots();
+        renderPoolInspirations();
+      }
+
+      function renderPoolInspirations() {
+        const container = $('#pool-tips');
+        if (!state.pool.length) {
+          container.innerHTML = '<div class="pool-empty"><strong>组合灵感暂时留白</strong>先从左侧收藏喜欢的字，候选池里有字之后，组合建议会出现在这里。</div>';
+          return;
+        }
+        if (state.pool.length < 2) {
+          container.innerHTML = '<div class="pool-empty"><strong>再收藏一枚字</strong>两枚字相遇之后，组合灵感会出现在这里。</div>';
+          return;
+        }
+        const suggestions = [];
+        for (let first = 0; first < state.pool.length && suggestions.length < 3; first += 1) {
+          for (let second = first + 1; second < state.pool.length && suggestions.length < 3; second += 1) {
+            const left = state.pool[first];
+            const right = state.pool[second];
+            suggestions.push({ name: `${left.char}${right.char}`, description: `${left.meaning.split('，')[0]}，${right.meaning.split('，')[0]}。` });
+          }
+        }
+        const labels = ['一', '二', '三'];
+        container.innerHTML = suggestions.map((suggestion, index) => `<button type="button" class="tip-card" data-suggestion="${escapeHTML(suggestion.name)}"><span class="tip-index">${labels[index]}</span><span><strong>${escapeHTML(suggestion.name)}</strong><p>${escapeHTML(suggestion.description)}</p></span></button>`).join('');
+      }
+
+      function renderName() {
+        const chars = state.nameChars.slice(0, state.length);
+        $('#name-display').innerHTML = `<span class="surname">${escapeHTML(state.surname || '姓')}</span>` + Array.from({length: state.length}, (_, index) => `<span class="${chars[index] ? 'name-char' : 'empty-slot'}">${escapeHTML(chars[index] || '')}</span>`).join('');
+        $('#name-status').textContent = `${state.surname}${chars.filter(Boolean).join('')}`;
+        const key = chars.filter(Boolean).join('');
+        const data = meaningMap[key] || meaningMap[state.surname + key] || makeDynamicMeaning(chars);
+        $('#ai-summary').textContent = data.summary;
+        $('#meaning-list').innerHTML = data.items.map(([glyph, meaning]) => `<div class="meaning-item"><span class="meaning-glyph">${glyph}</span><span><strong>${glyph} · 字义</strong><p>${meaning}</p></span></div>`).join('');
+        renderFavoriteAction();
+      }
+
+      function renderFavoriteAction() {
+        const button = $('#favorite-action');
+        const isFavorited = currentFavoriteIndex() !== -1;
+        const enabled = isCompleteName();
+        button.disabled = !enabled;
+        button.classList.toggle('is-favorited', isFavorited);
+        button.setAttribute('aria-pressed', String(isFavorited));
+        button.innerHTML = `<span class="favorite-symbol" aria-hidden="true">${isFavorited ? '♥' : '♡'}</span><span>${isFavorited ? '已喜欢' : '喜欢这个名字'}</span>`;
+        button.title = enabled ? (isFavorited ? '取消喜欢这个名字' : '标记为喜欢的名字') : '请先完成姓氏和名字组合';
+      }
+
+      function renderFavorites() {
+        const list = $('#favorites-list');
+        $('#favorite-count').textContent = state.favorites.length;
+        if (!state.favorites.length) {
+          list.innerHTML = '<div class="favorites-empty">还没有标记喜欢的名字。组合出满意的名字后，点击预览旁边的“喜欢这个名字”。</div>';
+          return;
+        }
+        list.innerHTML = state.favorites.map((entry, index) => {
+          const elements = [...new Set(entry.chars.map(char => charByGlyph(char)?.element).filter(Boolean))].map(element => element === 'water' ? '水' : '木').join(' · ');
+          const date = new Date(entry.savedAt);
+          const savedDate = Number.isNaN(date.getTime()) ? '' : `${date.getMonth() + 1}/${date.getDate()}`;
+          return `<div class="favorite-row"><button type="button" class="favorite-main" data-restore-favorite="${index}" aria-label="恢复名字${escapeHTML(entry.name)}"><span class="favorite-name">${escapeHTML(entry.name)}</span><span class="favorite-meta">${elements || '自定义'}${savedDate ? ` · ${savedDate}` : ''}</span></button><button type="button" class="favorite-remove" data-remove-favorite="${index}" aria-label="删除喜欢的名字${escapeHTML(entry.name)}">×</button></div>`;
+        }).join('');
+      }
+
+      function toggleFavorite() {
+        if (!isCompleteName()) {
+          showToast('请先完成姓氏和名字组合');
+          return;
+        }
+        const index = currentFavoriteIndex();
+        if (index >= 0) {
+          state.favorites.splice(index, 1);
+          showToast(`已取消「${getCurrentName()}」`);
+        } else {
+          state.favorites.unshift({ id: `favorite-${Date.now()}`, name: getCurrentName(), surname: state.surname, length: state.length, chars: getCurrentChars(), savedAt: Date.now() });
+          showToast(`已标记「${getCurrentName()}」为喜欢的名字`);
+        }
+        persistState();
+        renderFavoriteAction();
+        renderFavorites();
+      }
+
+      function restoreFavorite(index) {
+        const favorite = state.favorites[index];
+        if (!favorite) return;
+        state.surname = favorite.surname || favorite.name.slice(0, -favorite.length);
+        state.length = favorite.length === 3 ? 3 : 2;
+        state.nameChars = Array.from({length: state.length}, (_, position) => favorite.chars[position] || '');
+        favorite.chars.map(charByGlyph).filter(Boolean).forEach(item => {
+          if (!state.pool.some(poolItem => poolItem.char === item.char)) state.pool.push(item);
+        });
+        $('#surname-input').value = state.surname;
+        $$('[data-length]').forEach(item => item.setAttribute('aria-pressed', String(Number(item.dataset.length) === state.length)));
+        persistState();
+        renderLibrary();
+        renderPool();
+        renderName();
+        showToast(`已恢复「${favorite.name}」`);
+      }
+
+      function removeFavorite(index) {
+        const favorite = state.favorites[index];
+        if (!favorite) return;
+        state.favorites.splice(index, 1);
+        persistState();
+        renderFavorites();
+        renderFavoriteAction();
+        showToast(`已删除「${favorite.name}」`);
+      }
+
+      function renderSlots() {
+        const row = $('#slot-row');
+        row.innerHTML = Array.from({length: 3}, (_, index) => {
+          const disabled = index >= state.length;
+          const value = state.nameChars[index] || '';
+          const options = '<option value="">留空</option>' + state.pool.map(item => `<option value="${item.char}" ${value === item.char ? 'selected' : ''}>${item.char} · ${item.element === 'water' ? '水' : '木'}</option>`).join('');
+          return `<div class="slot-select"><select data-slot="${index}" aria-label="第${index + 1}个名字字" ${disabled ? 'disabled' : ''}>${options}</select><div class="slot-caption">第 ${index + 1} 字</div></div>`;
+        }).join('');
+      }
+
+      function makeDynamicMeaning(chars) {
+        const selected = chars.filter(Boolean).map(charByGlyph).filter(Boolean);
+        if (!selected.length) return { summary: '先从候选池里选一枚字，名字的第一层气质会从这里开始。', items: [['字','等待一枚被认真挑选的字']] };
+        const elements = selected.map(item => item.element === 'water' ? '水' : '木');
+        const elementText = elements.length > 1 && new Set(elements).size > 1 ? '水木相逢，既有流动，也有扎根。' : `${elements[0]}意相连，气质更集中，也更容易留下清晰的第一印象。`;
+        return { summary: `${selected.map(item => item.char).join('')}：${selected.map(item => item.meaning.split('，')[0]).join('，')}。${elementText} 这是一份基于字义的初步解释，真正的喜欢仍然属于你们自己。`, items: selected.map(item => [item.char, item.meaning]) };
+      }
+
+      function showToast(message) {
+        const toast = $('#toast');
+        $('#toast-message').textContent = message;
+        toast.classList.add('is-visible');
+        clearTimeout(state.toastTimer);
+        state.toastTimer = setTimeout(() => toast.classList.remove('is-visible'), 2200);
+      }
+
+      function updateElement(nextElement) {
+        state.element = nextElement;
+        state.stroke = 'all';
+        state.query = '';
+        $('#character-search').value = '';
+        $$('[data-element]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.element === state.element)));
+        renderStrokeOptions();
+        renderLibrary();
+        persistState();
+      }
+
+      function addToPool(char) {
+        const item = charByGlyph(char);
+        if (!item) return;
+        if (state.pool.some(poolItem => poolItem.char === char)) {
+          state.pool = state.pool.filter(poolItem => poolItem.char !== char);
+          state.nameChars = state.nameChars.map(nameChar => nameChar === char ? '' : nameChar);
+          showToast(`已从候选池移除「${char}」`);
+        } else {
+          state.pool = [...state.pool, item];
+          showToast(`「${char}」已加入候选池`);
+        }
+        renderLibrary();
+        renderPool();
+        renderName();
+        persistState();
+      }
+
+      $$('[data-element]').forEach(button => button.addEventListener('click', () => updateElement(button.dataset.element)));
+      $('#character-search').addEventListener('input', event => { state.query = event.target.value; renderLibrary(); persistState(); });
+      $('#stroke-select').addEventListener('change', event => { state.stroke = event.target.value; renderLibrary(); persistState(); });
+      $$('[data-quick]').forEach(button => button.addEventListener('click', () => {
+        state.quick = button.dataset.quick;
+        $$('[data-quick]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+        renderLibrary();
+        persistState();
+      }));
+      $('#character-grid').addEventListener('click', event => { const card = event.target.closest('[data-character]'); if (card) addToPool(card.dataset.character); });
+      $('#pool-list').addEventListener('click', event => { const removeButton = event.target.closest('[data-remove]'); if (removeButton) addToPool(removeButton.dataset.remove); });
+      $('#surname-input').addEventListener('input', event => { state.surname = event.target.value.slice(0, 2); renderName(); renderPool(); persistState(); });
+      $('#surname-input').addEventListener('change', event => { state.surname = event.target.value.slice(0, 2); persistState(); });
+      $$('[data-length]').forEach(button => button.addEventListener('click', () => { state.length = Number(button.dataset.length); $$('[data-length]').forEach(item => item.setAttribute('aria-pressed', String(item === button))); state.nameChars = state.nameChars.slice(0, state.length); renderPool(); renderName(); persistState(); }));
+      $('#slot-row').addEventListener('change', event => { const select = event.target.closest('[data-slot]'); if (!select) return; state.nameChars[Number(select.dataset.slot)] = select.value; renderName(); renderPool(); persistState(); });
+      $('#pool-tips').addEventListener('click', event => {
+        const button = event.target.closest('[data-suggestion]');
+        if (!button) return;
+        const suggestion = button.dataset.suggestion.split('');
+        suggestion.forEach(char => { if (!state.pool.some(item => item.char === char)) state.pool.push(charByGlyph(char)); });
+        state.nameChars = suggestion;
+        state.length = suggestion.length;
+        $$('[data-length]').forEach(item => item.setAttribute('aria-pressed', String(Number(item.dataset.length) === state.length)));
+        renderLibrary();
+        renderPool();
+        renderName();
+        persistState();
+        showToast(`已把「${button.dataset.suggestion}」放入起名栏`);
+      });
+      $('#favorite-action').addEventListener('click', toggleFavorite);
+      $('#favorites-list').addEventListener('click', event => {
+        const restoreButton = event.target.closest('[data-restore-favorite]');
+        const removeButton = event.target.closest('[data-remove-favorite]');
+        if (restoreButton) restoreFavorite(Number(restoreButton.dataset.restoreFavorite));
+        if (removeButton) removeFavorite(Number(removeButton.dataset.removeFavorite));
+      });
+      $('#ai-action').addEventListener('click', () => { if (state.loading) return; state.loading = true; $('#ai-card').classList.add('loading'); $('#ai-action').disabled = true; $('#ai-action').textContent = '正在整理这份心意…'; $('#ai-status').innerHTML = 'AI 正在解析 <span class="ai-pulse"><i></i><i></i><i></i></span>'; setTimeout(() => { state.loading = false; $('#ai-card').classList.remove('loading'); $('#ai-action').disabled = false; $('#ai-action').textContent = '重新解析这个名字'; $('#ai-status').textContent = 'AI 已就绪'; renderName(); }, 720); });
+      window.addEventListener('beforeunload', persistState);
+
+      $('#character-search').value = state.query;
+      $('#surname-input').value = state.surname;
+      $$('[data-element]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.element === state.element)));
+      $$('[data-quick]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.quick === state.quick)));
+      renderStrokeOptions();
+      renderLibrary();
+      renderPool();
+      renderName();
+      renderFavorites();
+    </script>
+  </body>
+</html>
