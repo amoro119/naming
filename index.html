@@ -280,7 +280,11 @@
       .pool-empty strong { display: block; margin-bottom: 4px; color: var(--body); font-family: var(--serif); font-size: 18px; font-weight: 400; }
 
       .pool-section-label { display: flex; align-items: center; justify-content: space-between; margin: 24px 0 11px; color: var(--body); font-size: 12px; }
-      .pool-section-label span:last-child { color: var(--muted); }
+      .pool-section-label > span:first-child { flex: 0 0 auto; }
+      .inspiration-actions { display: inline-flex; min-width: 0; align-items: flex-start; justify-content: flex-end; gap: 6px; }
+      .inspiration-slot { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; }
+      .inspiration-element { width: 67px; min-height: 28px; padding: 0 18px 0 7px; color: var(--body); background: var(--surface); border: 1px solid var(--line); border-radius: 7px; font-size: 11px; }
+      .inspiration-slot-label { color: var(--muted); font-size: 10px; line-height: 1.1; white-space: nowrap; }
 
       .refresh-inspirations { display: inline-flex; align-items: center; gap: 5px; min-height: 28px; padding: 0 9px; color: var(--river); background: transparent; border: 1px solid var(--line); border-radius: 999px; font-size: 11px; transition: background 160ms ease, border-color 160ms ease, color 160ms ease; }
       .refresh-inspirations svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
@@ -292,6 +296,8 @@
       .tip-index { display: grid; width: 29px; height: 29px; place-items: center; color: var(--sage-deep); background: var(--surface-soft); border-radius: 8px; font-family: var(--serif); font-size: 15px; }
       .tip-card strong { display: block; margin-bottom: 3px; font-family: var(--serif); font-size: 15px; font-weight: 400; }
       .tip-card p { margin: 0; color: var(--body); font-size: 11px; line-height: 1.55; }
+
+      .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
       .note-box { margin-top: 22px; padding: 13px 14px; color: var(--body); background: #f8f5ee; border: 1px solid #ede4d8; border-radius: 11px; font-size: 11px; line-height: 1.6; }
       .note-box strong { display: block; margin-bottom: 4px; color: var(--ink); font-weight: 500; }
@@ -432,6 +438,8 @@
         .search-row { grid-template-columns: 1fr; }
         .footer { display: block; line-height: 1.7; }
         .footer p + p { margin-top: 6px; }
+        .pool-section-label { align-items: flex-start; gap: 8px; }
+        .inspiration-actions { flex-wrap: wrap; }
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -552,7 +560,7 @@
             </div>
             <div class="pool-inner">
               <div class="pool-list" id="pool-list" aria-live="polite"></div>
-              <div class="pool-section-label"><span>组合灵感</span><button type="button" class="refresh-inspirations" id="refresh-inspirations" aria-label="从当前候选池换一组组合"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.7-4L3 9"></path><path d="M3 4v5h5"></path><path d="M4 13a8 8 0 0 0 14.7 4L21 15"></path><path d="M21 20v-5h-5"></path></svg><span>换一换</span></button></div>
+              <div class="pool-section-label"><span>组合灵感</span><div class="inspiration-actions"><div class="inspiration-slot"><label class="sr-only" for="inspiration-left-element">第1字五行</label><select class="inspiration-element" id="inspiration-left-element" aria-label="第1字五行"><option value="any">留空</option><option value="water">水</option><option value="wood">木</option></select><span class="inspiration-slot-label">第 1 字</span></div><div class="inspiration-slot"><label class="sr-only" for="inspiration-right-element">第2字五行</label><select class="inspiration-element" id="inspiration-right-element" aria-label="第2字五行"><option value="any">留空</option><option value="water">水</option><option value="wood">木</option></select><span class="inspiration-slot-label">第 2 字</span></div><button type="button" class="refresh-inspirations" id="refresh-inspirations" aria-label="从当前候选池换一组组合"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.7-4L3 9"></path><path d="M3 4v5h5"></path><path d="M4 13a8 8 0 0 0 14.7 4L21 15"></path><path d="M21 20v-5h-5"></path></svg><span>换一换</span></button></div></div>
               <div class="pool-tips" id="pool-tips" aria-live="polite"></div>
               <div class="note-box"><strong>字库说明</strong>水木字表已按康熙字典五行吉字页及其“更多”分页整理为本地配置；可直接修改 characters.config.js。传统五行归类也不等同于医学或科学结论；最终定名，请一起考虑姓氏声调、家族文化和日常书写。</div>
             </div>
@@ -682,6 +690,14 @@
           const surnameTouched = saved.surnameTouched === true;
           const surname = savedSurname === '林' && !surnameTouched ? DEFAULT_SURNAME : (savedSurname || DEFAULT_SURNAME);
           const shouldResetSeededDraft = JSON.stringify(saved.pool) === JSON.stringify(INITIAL_DEMO_POOL) && JSON.stringify(saved.nameChars) === JSON.stringify(['清','和']);
+          const legacyPattern = {
+            all: ['any', 'any'],
+            'water-water': ['water', 'water'],
+            'water-wood': ['water', 'wood'],
+            'wood-water': ['wood', 'water'],
+            'wood-wood': ['wood', 'wood']
+          }[saved.inspirationPattern] || ['any', 'any'];
+          const validElementFilter = value => ['any', 'water', 'wood'].includes(value);
           const favorites = Array.isArray(saved.favorites) ? saved.favorites.map((entry, index) => ({
             id: typeof entry.id === 'string' ? entry.id : `favorite-${index}-${entry.savedAt || Date.now()}`,
             name: typeof entry.name === 'string' ? entry.name.slice(0, 12) : '',
@@ -700,6 +716,8 @@
             surnameTouched,
             length: saved.length === 3 ? 3 : 2,
             nameChars: shouldResetSeededDraft ? ['', ''] : (Array.isArray(saved.nameChars) ? saved.nameChars.map(String).slice(0, 3) : null),
+            inspirationLeftElement: validElementFilter(saved.inspirationLeftElement) ? saved.inspirationLeftElement : legacyPattern[0],
+            inspirationRightElement: validElementFilter(saved.inspirationRightElement) ? saved.inspirationRightElement : legacyPattern[1],
             favorites
           };
         } catch (error) {
@@ -719,6 +737,8 @@
             surnameTouched: state.surnameTouched,
             length: state.length,
             nameChars: state.nameChars.slice(0, state.length),
+            inspirationLeftElement: state.inspirationLeftElement,
+            inspirationRightElement: state.inspirationRightElement,
             favorites: state.favorites.slice(0, 50)
           }));
           state.storageReady = true;
@@ -740,10 +760,15 @@
         surnameTouched: savedState.surnameTouched === true,
         length: savedState.length || 2,
         nameChars: savedState.nameChars ?? ['', ''],
+        inspirationLeftElement: savedState.inspirationLeftElement || 'any',
+        inspirationRightElement: savedState.inspirationRightElement || 'any',
         favorites: savedState.favorites ?? [],
         inspirationPoolKey: '',
         inspirationOrder: [],
+        inspirationRightOrder: [],
         inspirationDistances: [],
+        inspirationRowStarts: [],
+        inspirationPairCount: 0,
         inspirationCursor: 0,
         inspirationSuggestions: [],
         aiConfig: loadAIConfig(),
@@ -849,7 +874,8 @@
         renderPoolInspirations();
       }
 
-      const INSPIRATION_BATCH_SIZE = 3;
+      const INSPIRATION_BATCH_SIZE = 5;
+      const INSPIRATION_ELEMENT_LABELS = {any: '不限', water: '水', wood: '木'};
 
       function shuffleCopy(items) {
         const shuffled = [...items];
@@ -861,23 +887,87 @@
       }
 
       function getInspirationPoolKey() {
-        return state.pool.map(item => item.char).sort().join('|');
+        return `${state.inspirationLeftElement}-${state.inspirationRightElement}::${state.pool.map(item => item.char).sort().join('|')}`;
+      }
+
+      function getInspirationPattern() {
+        const leftElement = state.inspirationLeftElement === 'any' ? null : state.inspirationLeftElement;
+        const rightElement = state.inspirationRightElement === 'any' ? null : state.inspirationRightElement;
+        if (!leftElement && !rightElement) return null;
+        return {leftElement, rightElement};
+      }
+
+      function getInspirationPatternLabel() {
+        const leftLabel = INSPIRATION_ELEMENT_LABELS[state.inspirationLeftElement] || INSPIRATION_ELEMENT_LABELS.any;
+        const rightLabel = INSPIRATION_ELEMENT_LABELS[state.inspirationRightElement] || INSPIRATION_ELEMENT_LABELS.any;
+        return leftLabel === '不限' && rightLabel === '不限' ? '全部组合' : `${leftLabel}${rightLabel}组合`;
+      }
+
+      function countInspirationPairs() {
+        const pattern = getInspirationPattern();
+        if (!pattern) return state.pool.length * Math.max(0, state.pool.length - 1);
+        const leftItems = state.pool.filter(item => !pattern.leftElement || item.element === pattern.leftElement);
+        const rightItems = state.pool.filter(item => !pattern.rightElement || item.element === pattern.rightElement);
+        const selfPairs = leftItems.reduce((count, left) => count + (rightItems.some(right => right.char === left.char) ? 1 : 0), 0);
+        return leftItems.length * rightItems.length - selfPairs;
       }
 
       function beginInspirationCycle(poolKey) {
         state.inspirationPoolKey = poolKey;
-        state.inspirationOrder = shuffleCopy(state.pool);
-        state.inspirationDistances = shuffleCopy(Array.from({ length: Math.max(0, state.pool.length - 1) }, (_, index) => index + 1));
+        const pattern = getInspirationPattern();
+        if (!pattern) {
+          state.inspirationOrder = shuffleCopy(state.pool);
+          state.inspirationRightOrder = [];
+          state.inspirationDistances = shuffleCopy(Array.from({ length: Math.max(0, state.pool.length - 1) }, (_, index) => index + 1));
+        } else {
+          state.inspirationOrder = shuffleCopy(state.pool.filter(item => !pattern.leftElement || item.element === pattern.leftElement));
+          state.inspirationRightOrder = shuffleCopy(state.pool.filter(item => !pattern.rightElement || item.element === pattern.rightElement));
+          state.inspirationDistances = [];
+          state.inspirationRowStarts = [0];
+          state.inspirationOrder.forEach(left => {
+            const excludesSelf = state.inspirationRightOrder.some(right => right.char === left.char);
+            const rowSize = state.inspirationRightOrder.length - (excludesSelf ? 1 : 0);
+            state.inspirationRowStarts.push(state.inspirationRowStarts[state.inspirationRowStarts.length - 1] + rowSize);
+          });
+        }
+        state.inspirationPairCount = countInspirationPairs();
         state.inspirationCursor = 0;
       }
 
       function getInspirationAt(position) {
-        const count = state.inspirationOrder.length;
-        const distanceIndex = Math.floor(position / count);
-        const firstIndex = position % count;
-        const distance = state.inspirationDistances[distanceIndex];
-        const left = state.inspirationOrder[firstIndex];
-        const right = state.inspirationOrder[(firstIndex + distance) % count];
+        const pattern = getInspirationPattern();
+        let left;
+        let right;
+        if (!pattern) {
+          const count = state.inspirationOrder.length;
+          const distanceIndex = Math.floor(position / count);
+          const firstIndex = position % count;
+          const distance = state.inspirationDistances[distanceIndex];
+          left = state.inspirationOrder[firstIndex];
+          right = state.inspirationOrder[(firstIndex + distance) % count];
+        } else {
+          if (!state.inspirationOrder.length || !state.inspirationRightOrder.length) return null;
+          let leftIndex = 0;
+          let low = 0;
+          let high = state.inspirationRowStarts.length - 1;
+          while (low <= high) {
+            const middle = Math.floor((low + high) / 2);
+            if (state.inspirationRowStarts[middle] <= position) {
+              leftIndex = middle;
+              low = middle + 1;
+            } else {
+              high = middle - 1;
+            }
+          }
+          if (leftIndex >= state.inspirationOrder.length) return null;
+          const leftRowStart = state.inspirationRowStarts[leftIndex];
+          let rightIndex = position - leftRowStart;
+          left = state.inspirationOrder[leftIndex];
+          const excludedIndex = state.inspirationRightOrder.findIndex(item => item.char === left.char);
+          if (excludedIndex >= 0 && rightIndex >= excludedIndex) rightIndex += 1;
+          right = state.inspirationRightOrder[rightIndex];
+        }
+        if (!left || !right) return null;
         return {
           name: `${left.char}${right.char}`,
           description: `${left.meaning.split('，')[0]}，${right.meaning.split('，')[0]}。`
@@ -885,7 +975,7 @@
       }
 
       function takeNextInspirationBatch() {
-        const total = state.pool.length * (state.pool.length - 1);
+        const total = countInspirationPairs();
         if (!total) return [];
         if (state.inspirationCursor >= total) {
           const previousNames = new Set(state.inspirationSuggestions.map(item => item.name));
@@ -899,7 +989,7 @@
           );
         }
         const batchSize = Math.min(INSPIRATION_BATCH_SIZE, total - state.inspirationCursor);
-        const suggestions = Array.from({ length: batchSize }, (_, index) => getInspirationAt(state.inspirationCursor + index));
+        const suggestions = Array.from({ length: batchSize }, (_, index) => getInspirationAt(state.inspirationCursor + index)).filter(Boolean);
         state.inspirationCursor += batchSize;
         return suggestions;
       }
@@ -908,20 +998,27 @@
         const container = $('#pool-tips');
         const refreshButton = $('#refresh-inspirations');
         const poolKey = getInspirationPoolKey();
-        const total = state.pool.length * (state.pool.length - 1);
+        const total = countInspirationPairs();
         const poolChanged = poolKey !== state.inspirationPoolKey;
+        const patternLabel = getInspirationPatternLabel();
+        const leftSelect = $('#inspiration-left-element');
+        const rightSelect = $('#inspiration-right-element');
+        if (leftSelect) leftSelect.value = state.inspirationLeftElement;
+        if (rightSelect) rightSelect.value = state.inspirationRightElement;
         if (refreshButton) {
           refreshButton.disabled = total <= INSPIRATION_BATCH_SIZE;
-          refreshButton.title = total <= INSPIRATION_BATCH_SIZE ? '当前已展示全部组合' : '从候选池换一组不重复的组合';
+          refreshButton.title = total <= INSPIRATION_BATCH_SIZE ? `当前${patternLabel}已全部展示` : `从候选池换一组${patternLabel}`;
         }
         if (!state.pool.length) {
           state.inspirationSuggestions = [];
           container.innerHTML = '<div class="pool-empty"><strong>组合灵感暂时留白</strong>先从左侧收藏喜欢的字，候选池里有字之后，组合建议会出现在这里。</div>';
           return;
         }
-        if (state.pool.length < 2) {
+        if (!total) {
           state.inspirationSuggestions = [];
-          container.innerHTML = '<div class="pool-empty"><strong>再收藏一枚字</strong>两枚字相遇之后，组合灵感会出现在这里。</div>';
+          container.innerHTML = state.inspirationLeftElement === 'any' && state.inspirationRightElement === 'any'
+            ? '<div class="pool-empty"><strong>再收藏一枚字</strong>两枚字相遇之后，组合灵感会出现在这里。</div>'
+            : `<div class="pool-empty"><strong>暂无${escapeHTML(patternLabel)}</strong>候选池中还没有满足这个组合顺序的两枚字。</div>`;
           return;
         }
         if (poolChanged) {
@@ -930,7 +1027,7 @@
         } else if (shouldRefresh || !state.inspirationSuggestions.length) {
           state.inspirationSuggestions = takeNextInspirationBatch();
         }
-        const labels = ['一', '二', '三'];
+        const labels = ['一', '二', '三', '四', '五'];
         container.innerHTML = state.inspirationSuggestions.map((suggestion, index) => `<button type="button" class="tip-card" data-suggestion="${escapeHTML(suggestion.name)}"><span class="tip-index">${labels[index]}</span><span><strong>${escapeHTML(suggestion.name)}</strong><p>${escapeHTML(suggestion.description)}</p></span></button>`).join('');
       }
 
@@ -1465,9 +1562,17 @@
       $$('[data-length]').forEach(button => button.addEventListener('click', () => { state.length = Number(button.dataset.length); $$('[data-length]').forEach(item => item.setAttribute('aria-pressed', String(item === button))); state.nameChars = state.nameChars.slice(0, state.length); renderPool(); renderName(); persistState(); }));
       $('#slot-row').addEventListener('change', event => { const select = event.target.closest('[data-slot]'); if (!select) return; state.nameChars[Number(select.dataset.slot)] = select.value; renderName(); renderPool(); persistState(); });
       $('#refresh-inspirations').addEventListener('click', () => {
-        if (state.pool.length < 2) return;
+        if (countInspirationPairs() <= INSPIRATION_BATCH_SIZE) return;
         renderPoolInspirations(true);
       });
+      function updateInspirationElementFilter(key, value) {
+        state[key] = ['any', 'water', 'wood'].includes(value) ? value : 'any';
+        state.inspirationSuggestions = [];
+        renderPoolInspirations();
+        persistState();
+      }
+      $('#inspiration-left-element').addEventListener('change', event => updateInspirationElementFilter('inspirationLeftElement', event.target.value));
+      $('#inspiration-right-element').addEventListener('change', event => updateInspirationElementFilter('inspirationRightElement', event.target.value));
       $('#pool-tips').addEventListener('click', event => {
         const button = event.target.closest('[data-suggestion]');
         if (!button) return;
