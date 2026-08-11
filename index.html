@@ -741,7 +741,11 @@
         length: savedState.length || 2,
         nameChars: savedState.nameChars ?? ['', ''],
         favorites: savedState.favorites ?? [],
-        inspirationOffset: 0,
+        inspirationPoolKey: '',
+        inspirationOrder: [],
+        inspirationDistances: [],
+        inspirationCursor: 0,
+        inspirationSuggestions: [],
         aiConfig: loadAIConfig(),
         aiExplanation: null,
         loading: false,
@@ -842,35 +846,92 @@
         $('#pool-status').textContent = state.pool.length ? `${state.pool.length} 枚已收藏` : '等待收藏';
         $('#name-status').textContent = `${state.surname}${getCurrentChars().filter(Boolean).join('')}`;
         renderSlots();
-        state.inspirationOffset = 0;
         renderPoolInspirations();
+      }
+
+      const INSPIRATION_BATCH_SIZE = 3;
+
+      function shuffleCopy(items) {
+        const shuffled = [...items];
+        for (let index = shuffled.length - 1; index > 0; index -= 1) {
+          const swapIndex = Math.floor(Math.random() * (index + 1));
+          [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+        }
+        return shuffled;
+      }
+
+      function getInspirationPoolKey() {
+        return state.pool.map(item => item.char).sort().join('|');
+      }
+
+      function beginInspirationCycle(poolKey) {
+        state.inspirationPoolKey = poolKey;
+        state.inspirationOrder = shuffleCopy(state.pool);
+        state.inspirationDistances = shuffleCopy(Array.from({ length: Math.max(0, state.pool.length - 1) }, (_, index) => index + 1));
+        state.inspirationCursor = 0;
+      }
+
+      function getInspirationAt(position) {
+        const count = state.inspirationOrder.length;
+        const distanceIndex = Math.floor(position / count);
+        const firstIndex = position % count;
+        const distance = state.inspirationDistances[distanceIndex];
+        const left = state.inspirationOrder[firstIndex];
+        const right = state.inspirationOrder[(firstIndex + distance) % count];
+        return {
+          name: `${left.char}${right.char}`,
+          description: `${left.meaning.split('，')[0]}，${right.meaning.split('，')[0]}。`
+        };
+      }
+
+      function takeNextInspirationBatch() {
+        const total = state.pool.length * (state.pool.length - 1);
+        if (!total) return [];
+        if (state.inspirationCursor >= total) {
+          const previousNames = new Set(state.inspirationSuggestions.map(item => item.name));
+          let attempts = 0;
+          do {
+            beginInspirationCycle(state.inspirationPoolKey);
+            attempts += 1;
+          } while (
+            attempts < 12
+            && Array.from({ length: Math.min(INSPIRATION_BATCH_SIZE, total) }, (_, index) => getInspirationAt(index)).some(item => previousNames.has(item.name))
+          );
+        }
+        const batchSize = Math.min(INSPIRATION_BATCH_SIZE, total - state.inspirationCursor);
+        const suggestions = Array.from({ length: batchSize }, (_, index) => getInspirationAt(state.inspirationCursor + index));
+        state.inspirationCursor += batchSize;
+        return suggestions;
       }
 
       function renderPoolInspirations(shouldRefresh = false) {
         const container = $('#pool-tips');
         const refreshButton = $('#refresh-inspirations');
-        if (shouldRefresh) state.inspirationOffset += 1;
-        if (refreshButton) refreshButton.disabled = state.pool.length < 2;
+        const poolKey = getInspirationPoolKey();
+        const total = state.pool.length * (state.pool.length - 1);
+        const poolChanged = poolKey !== state.inspirationPoolKey;
+        if (refreshButton) {
+          refreshButton.disabled = total <= INSPIRATION_BATCH_SIZE;
+          refreshButton.title = total <= INSPIRATION_BATCH_SIZE ? '当前已展示全部组合' : '从候选池换一组不重复的组合';
+        }
         if (!state.pool.length) {
+          state.inspirationSuggestions = [];
           container.innerHTML = '<div class="pool-empty"><strong>组合灵感暂时留白</strong>先从左侧收藏喜欢的字，候选池里有字之后，组合建议会出现在这里。</div>';
           return;
         }
         if (state.pool.length < 2) {
+          state.inspirationSuggestions = [];
           container.innerHTML = '<div class="pool-empty"><strong>再收藏一枚字</strong>两枚字相遇之后，组合灵感会出现在这里。</div>';
           return;
         }
-        const combinations = [];
-        for (let first = 0; first < state.pool.length; first += 1) {
-          for (let second = first + 1; second < state.pool.length; second += 1) {
-            const left = state.pool[first];
-            const right = state.pool[second];
-            combinations.push({ name: `${left.char}${right.char}`, description: `${left.meaning.split('，')[0]}，${right.meaning.split('，')[0]}。` });
-          }
+        if (poolChanged) {
+          beginInspirationCycle(poolKey);
+          state.inspirationSuggestions = takeNextInspirationBatch();
+        } else if (shouldRefresh || !state.inspirationSuggestions.length) {
+          state.inspirationSuggestions = takeNextInspirationBatch();
         }
-        const offset = state.inspirationOffset % combinations.length;
-        const suggestions = combinations.slice(offset).concat(combinations.slice(0, offset)).slice(0, 3);
         const labels = ['一', '二', '三'];
-        container.innerHTML = suggestions.map((suggestion, index) => `<button type="button" class="tip-card" data-suggestion="${escapeHTML(suggestion.name)}"><span class="tip-index">${labels[index]}</span><span><strong>${escapeHTML(suggestion.name)}</strong><p>${escapeHTML(suggestion.description)}</p></span></button>`).join('');
+        container.innerHTML = state.inspirationSuggestions.map((suggestion, index) => `<button type="button" class="tip-card" data-suggestion="${escapeHTML(suggestion.name)}"><span class="tip-index">${labels[index]}</span><span><strong>${escapeHTML(suggestion.name)}</strong><p>${escapeHTML(suggestion.description)}</p></span></button>`).join('');
       }
 
       function getAIStatusLabel() {
