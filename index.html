@@ -623,7 +623,7 @@
       const AI_STORAGE_KEY = 'jianzidingming-ai-config-v1';
       const INITIAL_DEMO_POOL = ['清','梓','沐','和'];
       const DEFAULT_SURNAME = '钱';
-      const AI_OUTPUT_TOKEN_LIMIT = 1600;
+      const AI_OUTPUT_TOKEN_LIMIT = 8192;
       const DEFAULT_AI_CONFIG = {
         provider: 'local',
         format: 'responses',
@@ -1273,8 +1273,9 @@
 
 只输出最终点评，不输出你的分析过程、检查清单、JSON 或 Markdown 代码块。`;
         const userPrompt = buildZenPrompt();
+        const isDeepSeekModel = /deepseek/i.test(state.aiConfig.model);
         const payload = state.aiConfig.format === 'chat.completions'
-          ? {model: state.aiConfig.model, messages: [{role: 'system', content: systemPrompt}, {role: 'user', content: userPrompt}], max_tokens: AI_OUTPUT_TOKEN_LIMIT}
+          ? {model: state.aiConfig.model, messages: [{role: 'system', content: systemPrompt}, {role: 'user', content: userPrompt}], ...(isDeepSeekModel ? {thinking: {type: 'disabled'}} : {}), max_tokens: AI_OUTPUT_TOKEN_LIMIT}
           : {model: state.aiConfig.model, instructions: systemPrompt, input: userPrompt, max_output_tokens: AI_OUTPUT_TOKEN_LIMIT};
         const route = getZenRequestRoute();
         const requestBody = route.proxy ? {apiKey: state.aiConfig.apiKey, baseUrl: state.aiConfig.baseUrl, payload} : payload;
