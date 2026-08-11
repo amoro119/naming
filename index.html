@@ -282,9 +282,9 @@
       .pool-section-label { display: flex; align-items: center; justify-content: space-between; margin: 24px 0 11px; color: var(--body); font-size: 12px; }
       .pool-section-label > span:first-child { flex: 0 0 auto; }
       .inspiration-actions { display: inline-flex; min-width: 0; align-items: flex-start; justify-content: flex-end; gap: 6px; }
-      .inspiration-slot { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; }
-      .inspiration-element { width: 67px; min-height: 28px; padding: 0 18px 0 7px; color: var(--body); background: var(--surface); border: 1px solid var(--line); border-radius: 7px; font-size: 11px; }
-      .inspiration-slot-label { color: var(--muted); font-size: 10px; line-height: 1.1; white-space: nowrap; }
+      .inspiration-element-toggle { min-width: 34px; min-height: 28px; padding: 0 8px; color: var(--body); background: var(--surface); border: 1px solid var(--line); border-radius: 7px; font-size: 11px; transition: color 160ms ease, background 160ms ease, border-color 160ms ease; }
+      .inspiration-element-toggle:hover { color: var(--sage-deep); border-color: #a9bbae; background: #edf3ed; }
+      .inspiration-element-toggle[aria-pressed="true"] { color: var(--sage-deep); border-color: #9ab8a2; background: #e4efe5; box-shadow: inset 0 0 0 1px rgba(97, 121, 97, 0.12); }
 
       .refresh-inspirations { display: inline-flex; align-items: center; gap: 5px; min-height: 28px; padding: 0 9px; color: var(--river); background: transparent; border: 1px solid var(--line); border-radius: 999px; font-size: 11px; transition: background 160ms ease, border-color 160ms ease, color 160ms ease; }
       .refresh-inspirations svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
@@ -560,7 +560,7 @@
             </div>
             <div class="pool-inner">
               <div class="pool-list" id="pool-list" aria-live="polite"></div>
-              <div class="pool-section-label"><span>组合灵感</span><div class="inspiration-actions"><div class="inspiration-slot"><label class="sr-only" for="inspiration-left-element">第1字五行</label><select class="inspiration-element" id="inspiration-left-element" aria-label="第1字五行"><option value="any">留空</option><option value="water">水</option><option value="wood">木</option></select><span class="inspiration-slot-label">第 1 字</span></div><div class="inspiration-slot"><label class="sr-only" for="inspiration-right-element">第2字五行</label><select class="inspiration-element" id="inspiration-right-element" aria-label="第2字五行"><option value="any">留空</option><option value="water">水</option><option value="wood">木</option></select><span class="inspiration-slot-label">第 2 字</span></div><button type="button" class="refresh-inspirations" id="refresh-inspirations" aria-label="从当前候选池换一组组合"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.7-4L3 9"></path><path d="M3 4v5h5"></path><path d="M4 13a8 8 0 0 0 14.7 4L21 15"></path><path d="M21 20v-5h-5"></path></svg><span>换一换</span></button></div></div>
+              <div class="pool-section-label"><span>组合灵感</span><div class="inspiration-actions" role="group" aria-label="组合五行要求"><button type="button" class="inspiration-element-toggle" data-inspiration-element="wood" aria-pressed="false" title="要求组合中包含木字">木</button><button type="button" class="inspiration-element-toggle" data-inspiration-element="water" aria-pressed="false" title="要求组合中包含水字">水</button><button type="button" class="refresh-inspirations" id="refresh-inspirations" aria-label="从当前候选池换一组组合"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.7-4L3 9"></path><path d="M3 4v5h5"></path><path d="M4 13a8 8 0 0 0 14.7 4L21 15"></path><path d="M21 20v-5h-5"></path></svg><span>换一换</span></button></div></div>
               <div class="pool-tips" id="pool-tips" aria-live="polite"></div>
               <div class="note-box"><strong>字库说明</strong>水木字表已按康熙字典五行吉字页及其“更多”分页整理为本地配置；可直接修改 characters.config.js。传统五行归类也不等同于医学或科学结论；最终定名，请一起考虑姓氏声调、家族文化和日常书写。</div>
             </div>
@@ -697,7 +697,10 @@
             'wood-water': ['wood', 'water'],
             'wood-wood': ['wood', 'wood']
           }[saved.inspirationPattern] || ['any', 'any'];
-          const validElementFilter = value => ['any', 'water', 'wood'].includes(value);
+          const legacyElements = Array.isArray(saved.inspirationElements)
+            ? saved.inspirationElements.filter(value => ['water', 'wood'].includes(value))
+            : [saved.inspirationLeftElement, saved.inspirationRightElement].filter(value => ['water', 'wood'].includes(value));
+          const inspirationElements = [...new Set(legacyElements.length ? legacyElements : legacyPattern.filter(value => ['water', 'wood'].includes(value)))];
           const favorites = Array.isArray(saved.favorites) ? saved.favorites.map((entry, index) => ({
             id: typeof entry.id === 'string' ? entry.id : `favorite-${index}-${entry.savedAt || Date.now()}`,
             name: typeof entry.name === 'string' ? entry.name.slice(0, 12) : '',
@@ -716,8 +719,7 @@
             surnameTouched,
             length: saved.length === 3 ? 3 : 2,
             nameChars: shouldResetSeededDraft ? ['', ''] : (Array.isArray(saved.nameChars) ? saved.nameChars.map(String).slice(0, 3) : null),
-            inspirationLeftElement: validElementFilter(saved.inspirationLeftElement) ? saved.inspirationLeftElement : legacyPattern[0],
-            inspirationRightElement: validElementFilter(saved.inspirationRightElement) ? saved.inspirationRightElement : legacyPattern[1],
+            inspirationElements,
             favorites
           };
         } catch (error) {
@@ -737,8 +739,7 @@
             surnameTouched: state.surnameTouched,
             length: state.length,
             nameChars: state.nameChars.slice(0, state.length),
-            inspirationLeftElement: state.inspirationLeftElement,
-            inspirationRightElement: state.inspirationRightElement,
+            inspirationElements: state.inspirationElements,
             favorites: state.favorites.slice(0, 50)
           }));
           state.storageReady = true;
@@ -760,8 +761,7 @@
         surnameTouched: savedState.surnameTouched === true,
         length: savedState.length || 2,
         nameChars: savedState.nameChars ?? ['', ''],
-        inspirationLeftElement: savedState.inspirationLeftElement || 'any',
-        inspirationRightElement: savedState.inspirationRightElement || 'any',
+        inspirationElements: savedState.inspirationElements ?? [],
         favorites: savedState.favorites ?? [],
         inspirationPoolKey: '',
         inspirationPairs: [],
@@ -872,7 +872,7 @@
       }
 
       const INSPIRATION_BATCH_SIZE = 5;
-      const INSPIRATION_ELEMENT_LABELS = {any: '不限', water: '水', wood: '木'};
+      const INSPIRATION_ELEMENT_LABELS = {water: '水', wood: '木'};
 
       function shuffleCopy(items) {
         const shuffled = [...items];
@@ -884,29 +884,24 @@
       }
 
       function getInspirationPoolKey() {
-        return `${state.inspirationLeftElement}-${state.inspirationRightElement}::${state.pool.map(item => item.char).sort().join('|')}`;
+        return `${state.inspirationElements.slice().sort().join('|') || 'all'}::${state.pool.map(item => item.char).sort().join('|')}`;
       }
 
-      function getInspirationPattern() {
-        const leftElement = state.inspirationLeftElement === 'any' ? null : state.inspirationLeftElement;
-        const rightElement = state.inspirationRightElement === 'any' ? null : state.inspirationRightElement;
-        if (!leftElement && !rightElement) return null;
-        return {leftElement, rightElement};
+      function isInspirationPairAllowed(left, right) {
+        const selectedElements = state.inspirationElements;
+        if (!selectedElements.length) return true;
+        if (selectedElements.length === 2) return left.element !== right.element;
+        return selectedElements.includes(left.element) || selectedElements.includes(right.element);
       }
 
       function getInspirationPatternLabel() {
-        const leftLabel = INSPIRATION_ELEMENT_LABELS[state.inspirationLeftElement] || INSPIRATION_ELEMENT_LABELS.any;
-        const rightLabel = INSPIRATION_ELEMENT_LABELS[state.inspirationRightElement] || INSPIRATION_ELEMENT_LABELS.any;
-        return leftLabel === '不限' && rightLabel === '不限' ? '全部组合' : `${leftLabel}${rightLabel}组合`;
+        if (state.inspirationElements.length === 2) return '一木一水组合（顺序不限）';
+        if (state.inspirationElements.length === 1) return `含${INSPIRATION_ELEMENT_LABELS[state.inspirationElements[0]]}组合`;
+        return '全部组合';
       }
 
       function countInspirationPairs() {
-        const pattern = getInspirationPattern();
-        if (!pattern) return state.pool.length * Math.max(0, state.pool.length - 1);
-        const leftItems = state.pool.filter(item => !pattern.leftElement || item.element === pattern.leftElement);
-        const rightItems = state.pool.filter(item => !pattern.rightElement || item.element === pattern.rightElement);
-        const selfPairs = leftItems.reduce((count, left) => count + (rightItems.some(right => right.char === left.char) ? 1 : 0), 0);
-        return leftItems.length * rightItems.length - selfPairs;
+        return state.pool.reduce((count, left) => count + state.pool.filter(right => right.char !== left.char && isInspirationPairAllowed(left, right)).length, 0);
       }
 
       function makeInspirationPair(left, right) {
@@ -917,12 +912,10 @@
       }
 
       function buildInspirationPairs() {
-        const pattern = getInspirationPattern();
-        const leftItems = shuffleCopy(state.pool.filter(item => !pattern?.leftElement || item.element === pattern.leftElement));
-        const rightItems = state.pool.filter(item => !pattern?.rightElement || item.element === pattern.rightElement);
-        if (!leftItems.length || !rightItems.length) return [];
+        const leftItems = shuffleCopy(state.pool);
+        if (!leftItems.length) return [];
 
-        const queues = new Map(leftItems.map(left => [left, shuffleCopy(rightItems.filter(right => right.char !== left.char))]));
+        const queues = new Map(leftItems.map(left => [left, shuffleCopy(state.pool.filter(right => right.char !== left.char && isInspirationPairAllowed(left, right)))]));
         const pairs = [];
         let activeLefts = leftItems;
         let lastLeft = null;
@@ -990,10 +983,11 @@
         const total = countInspirationPairs();
         const poolChanged = poolKey !== state.inspirationPoolKey;
         const patternLabel = getInspirationPatternLabel();
-        const leftSelect = $('#inspiration-left-element');
-        const rightSelect = $('#inspiration-right-element');
-        if (leftSelect) leftSelect.value = state.inspirationLeftElement;
-        if (rightSelect) rightSelect.value = state.inspirationRightElement;
+        $$('[data-inspiration-element]').forEach(button => {
+          const selected = state.inspirationElements.includes(button.dataset.inspirationElement);
+          button.setAttribute('aria-pressed', String(selected));
+          button.title = selected ? `已要求组合中包含${button.textContent}字` : `点击要求组合中包含${button.textContent}字`;
+        });
         if (refreshButton) {
           refreshButton.disabled = total <= INSPIRATION_BATCH_SIZE;
           refreshButton.title = total <= INSPIRATION_BATCH_SIZE ? `当前${patternLabel}已全部展示` : `从候选池换一组${patternLabel}`;
@@ -1005,7 +999,7 @@
         }
         if (!total) {
           state.inspirationSuggestions = [];
-          container.innerHTML = state.inspirationLeftElement === 'any' && state.inspirationRightElement === 'any'
+          container.innerHTML = !state.inspirationElements.length
             ? '<div class="pool-empty"><strong>再收藏一枚字</strong>两枚字相遇之后，组合灵感会出现在这里。</div>'
             : `<div class="pool-empty"><strong>暂无${escapeHTML(patternLabel)}</strong>候选池中还没有满足这个组合顺序的两枚字。</div>`;
           return;
@@ -1554,14 +1548,15 @@
         if (countInspirationPairs() <= INSPIRATION_BATCH_SIZE) return;
         renderPoolInspirations(true);
       });
-      function updateInspirationElementFilter(key, value) {
-        state[key] = ['any', 'water', 'wood'].includes(value) ? value : 'any';
+      function updateInspirationElementFilter(element) {
+        state.inspirationElements = state.inspirationElements.includes(element)
+          ? state.inspirationElements.filter(item => item !== element)
+          : [...state.inspirationElements, element];
         state.inspirationSuggestions = [];
         renderPoolInspirations();
         persistState();
       }
-      $('#inspiration-left-element').addEventListener('change', event => updateInspirationElementFilter('inspirationLeftElement', event.target.value));
-      $('#inspiration-right-element').addEventListener('change', event => updateInspirationElementFilter('inspirationRightElement', event.target.value));
+      $$('[data-inspiration-element]').forEach(button => button.addEventListener('click', () => updateInspirationElementFilter(button.dataset.inspirationElement)));
       $('#pool-tips').addEventListener('click', event => {
         const button = event.target.closest('[data-suggestion]');
         if (!button) return;
