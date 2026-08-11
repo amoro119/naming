@@ -109,6 +109,61 @@
       .source-link:hover { background: var(--surface); border-color: var(--line-strong); transform: translateY(-1px); }
       .source-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--coral); }
 
+      .settings-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        min-height: 32px;
+        padding: 0 11px;
+        color: var(--body);
+        background: rgba(255, 255, 255, 0.58);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        font-size: 12px;
+        transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
+      }
+
+      .settings-button:hover { background: var(--surface); border-color: var(--line-strong); transform: translateY(-1px); }
+      .settings-icon { color: var(--sage-deep); font-size: 15px; line-height: 1; }
+
+      .settings-dialog {
+        width: min(470px, calc(100% - 28px));
+        padding: 0;
+        color: var(--ink);
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 26px 80px rgba(28, 43, 33, 0.2);
+      }
+
+      .settings-dialog::backdrop { background: rgba(28, 42, 33, 0.28); backdrop-filter: blur(3px); }
+      .settings-content { padding: 22px; }
+      .settings-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 18px; }
+      .settings-title { margin: 0 0 5px; font-family: var(--serif); font-size: 22px; font-weight: 400; }
+      .settings-caption { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+      .settings-close { display: grid; width: 30px; height: 30px; place-items: center; color: var(--muted); background: var(--surface-soft); border: 1px solid var(--line); border-radius: 50%; font-size: 18px; line-height: 1; }
+      .settings-close:hover { color: var(--ink); background: var(--river-soft); }
+      .settings-field { display: grid; gap: 6px; margin-top: 13px; color: var(--body); font-size: 11px; }
+      .settings-field input, .settings-field select { width: 100%; min-height: 40px; padding: 0 11px; color: var(--ink); background: #fbfcf9; border: 1px solid var(--line-strong); border-radius: 8px; }
+      .settings-field input:focus, .settings-field select:focus { border-color: var(--river); outline: 0; box-shadow: 0 0 0 3px rgba(79, 127, 123, 0.12); }
+      .settings-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+      .settings-key-row { display: grid; grid-template-columns: minmax(0, 1fr) 54px; gap: 7px; }
+      .settings-key-row button { color: var(--body); background: var(--surface-soft); border: 1px solid var(--line-strong); border-radius: 8px; font-size: 11px; }
+      .settings-key-row button:hover { color: var(--ink); background: var(--river-soft); }
+      .settings-check { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--body); font-size: 11px; }
+      .settings-check input { width: 15px; height: 15px; accent-color: var(--river); }
+      .settings-note { margin: 13px 0 0; padding: 10px 11px; color: #6e6657; background: #f5f1e7; border: 1px solid #e9dfcf; border-radius: 8px; font-size: 11px; line-height: 1.6; }
+      .settings-note strong { color: #51493c; font-weight: 600; }
+      .settings-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 19px; }
+      .settings-actions button { min-height: 38px; padding: 0 14px; border-radius: 8px; font-size: 12px; }
+      .settings-cancel { color: var(--body); background: var(--surface-soft); border: 1px solid var(--line); }
+      .settings-save { color: #f8fbf7; background: var(--sage-deep); border: 1px solid var(--sage-deep); }
+      .settings-save:hover { background: #52735e; }
+      .settings-status { display: inline-flex; align-items: center; gap: 5px; margin-top: 11px; color: var(--river); font-size: 10px; }
+      .settings-status::before { content: ""; width: 6px; height: 6px; background: currentColor; border-radius: 50%; }
+      .settings-status.is-warning { color: var(--coral); }
+      [hidden] { display: none !important; }
+
       .hero {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
@@ -281,6 +336,7 @@
       .ai-symbol { display: grid; width: 23px; height: 23px; place-items: center; color: #f6f7f2; background: var(--river); border-radius: 7px; font-size: 11px; }
       .ai-status { color: var(--river); font-size: 10px; }
       .ai-summary { margin: 0 0 12px; color: var(--body); font-size: 12px; line-height: 1.65; }
+      .ai-summary.is-remote { white-space: pre-wrap; }
       .meaning-list { display: grid; gap: 7px; }
       .meaning-item { display: grid; grid-template-columns: 29px 1fr; gap: 8px; align-items: start; padding-top: 8px; border-top: 1px solid #e1e3da; }
       .meaning-glyph { color: var(--river); font-family: var(--serif); font-size: 20px; line-height: 1; }
@@ -348,6 +404,8 @@
       @media (max-width: 520px) {
         .topbar { padding-top: 17px; }
         .brand-sub { display: none; }
+        .settings-button { padding: 0 9px; }
+        .settings-button-label { display: none; }
         .source-link { padding: 7px 8px; font-size: 0; }
         .source-link::after { content: "来源"; font-size: 11px; }
         .hero { padding-top: 23px; padding-bottom: 25px; }
@@ -377,9 +435,58 @@
         </a>
         <div class="topbar-meta">
           <span>给名字留一点时间，也给孩子留一份心意</span>
+          <button type="button" class="settings-button" id="settings-open" aria-haspopup="dialog"><span class="settings-icon" aria-hidden="true">⚙</span><span class="settings-button-label">设置</span></button>
           <a class="source-link" href="https://www.kangxizidian.com.cn/wuxing/shui_jili.html" target="_blank" rel="noreferrer"><i class="source-dot" aria-hidden="true"></i>康熙字典 · 数据来源</a>
         </div>
       </header>
+
+      <dialog class="settings-dialog" id="settings-dialog" aria-labelledby="settings-title">
+        <div class="settings-content">
+          <div class="settings-header">
+            <div><h2 class="settings-title" id="settings-title">AI 服务设置</h2><p class="settings-caption">选择名字解释的来源，并保存你的接口参数。</p></div>
+            <button type="button" class="settings-close" id="settings-close" aria-label="关闭设置">×</button>
+          </div>
+          <form id="ai-settings-form">
+            <label class="settings-field" for="ai-provider">解释来源
+              <select id="ai-provider">
+                <option value="local">本地演示 · 无需接口</option>
+                <option value="zen">OpenCode Zen · 实时解释</option>
+              </select>
+            </label>
+            <div id="zen-config-fields">
+              <div class="settings-grid">
+                <label class="settings-field" for="ai-format">请求格式
+                  <select id="ai-format">
+                    <option value="responses">Responses</option>
+                    <option value="chat.completions">Chat Completions</option>
+                  </select>
+                </label>
+                <label class="settings-field" for="ai-model">模型
+                  <input id="ai-model" list="zen-models" autocomplete="off" placeholder="例如 gpt-5.5" />
+                  <datalist id="zen-models">
+                    <option value="gpt-5.5"></option>
+                    <option value="gpt-5.6-sol"></option>
+                    <option value="gpt-5.6-terra"></option>
+                    <option value="gpt-5.4-mini"></option>
+                    <option value="deepseek-v4-pro"></option>
+                    <option value="kimi-k2.7-code"></option>
+                  </datalist>
+                </label>
+              </div>
+              <label class="settings-field" for="ai-base-url">接口地址
+                <input id="ai-base-url" type="url" spellcheck="false" autocomplete="off" placeholder="https://opencode.ai/zen/v1/responses" />
+              </label>
+              <label class="settings-field" for="ai-api-key">API Key
+                <span class="settings-key-row"><input id="ai-api-key" type="password" spellcheck="false" autocomplete="off" placeholder="sk-…" /><button type="button" id="toggle-api-key">显示</button></span>
+              </label>
+              <label class="settings-check"><input id="ai-persist-key" type="checkbox" />在此浏览器中保存 API Key（仅本机）</label>
+              <p class="settings-note"><strong>代理说明：</strong>页面会请求同源 <code>/api/zen</code>。部署到 Vercel 时由 <code>api/zen.js</code> 提供代理；本地可运行 <code>node server.js</code>，再访问 <code>http://127.0.0.1:4173</code>。代理只转发本次请求，不保存 Key，也不要提交隐私信息。</p>
+            </div>
+            <div class="settings-status" id="settings-status" role="status" aria-live="polite"></div>
+            <div class="settings-actions"><button type="button" class="settings-cancel" id="settings-cancel">取消</button><button type="submit" class="settings-save">保存设置</button></div>
+          </form>
+        </div>
+      </dialog>
 
       <main id="top">
         <section class="hero" aria-labelledby="page-title">
@@ -433,7 +540,7 @@
               <div class="pool-list" id="pool-list" aria-live="polite"></div>
               <div class="pool-section-label"><span>组合灵感</span><span>来自当前候选池</span></div>
               <div class="pool-tips" id="pool-tips" aria-live="polite"></div>
-              <div class="note-box"><strong>字库说明</strong>当前为按康熙字典五行吉字页整理的本地起名示例快照，不是实时全量抓取。传统五行归类也不等同于医学或科学结论；最终定名，请一起考虑姓氏声调、家族文化和日常书写。</div>
+              <div class="note-box"><strong>字库说明</strong>水木字表已按康熙字典五行吉字页及其“更多”分页整理为本地配置；可直接修改 characters.config.js。传统五行归类也不等同于医学或科学结论；最终定名，请一起考虑姓氏声调、家族文化和日常书写。</div>
             </div>
           </section>
 
@@ -476,58 +583,24 @@
       </main>
 
       <footer class="footer">
-        <p>© 2026 见字起名 · 这是一个本地交互原型，AI 解释为演示数据</p>
+        <p>© 2026 见字起名 · AI 解释可使用本地演示或 OpenCode Zen</p>
         <p>字库来源：<a href="https://www.kangxizidian.com.cn/wuxing/shui.html" target="_blank" rel="noreferrer">五行属水</a> / <a href="https://www.kangxizidian.com.cn/wuxing/mu.html" target="_blank" rel="noreferrer">五行属木</a> · <a href="https://www.kangxizidian.com.cn/wuxing/shui_jili.html" target="_blank" rel="noreferrer">吉字页</a></p>
       </footer>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"><span class="toast-mark">✓</span><span id="toast-message"></span></div>
 
+    <script src="./characters.config.js"></script>
     <script>
-      const waterChars = [
-        ['文','wén',4,'文思清雅，温润有光','neutral'], ['云','yún',4,'云气舒展，自在从容','neutral'], ['贝','bèi',4,'珍贵明亮，丰足有福','girl'], ['凤','fèng',4,'高远灵秀，祥瑞自持','girl'],
-        ['水','shuǐ',4,'柔韧包容，顺势而行','neutral'], ['白','bái',5,'清白明净，坦荡纯粹','neutral'], ['禾','hé',5,'丰收安宁，温和踏实','neutral'], ['汇','huì',5,'汇聚美好，胸有万象','neutral'],
-        ['弘','hóng',5,'心量宽广，志向坚定','boy'], ['平','píng',5,'平和从容，安稳自得','neutral'], ['江','jiāng',6,'有江河气魄，也有绵延不息','boy'], ['华','huá',6,'光华内敛，丰盛有成','neutral'],
-        ['冰','bīng',6,'澄澈坚韧，清醒通透','girl'], ['欢','huān',6,'明朗喜悦，常怀欢心','neutral'], ['汐','xī',6,'潮汐有信，静中有力','girl'], ['妍','yán',7,'美好明丽，灵动自信','girl'],
-        ['希','xī',7,'心怀希望，明亮有方向','neutral'], ['沐','mù',7,'沐光而行，被温柔滋养','girl'], ['沛','pèi',7,'丰沛充盈，生机蓬勃','neutral'], ['汶','wèn',7,'水意清柔，内心安静','girl'],
-        ['沂','yí',7,'山水相依，温厚有根','neutral'], ['明','míng',8,'清明聪慧，心有光亮','boy'], ['泽','zé',8,'润泽万物，厚重而不张扬','neutral'], ['雨','yǔ',8,'温柔有恩，滋养万物','girl'],
-        ['和','hé',8,'和而不同，从容有分寸','neutral'], ['泓','hóng',8,'水深而静，心境澄明','boy'], ['学','xué',8,'好学不倦，日日有新','boy'], ['泳','yǒng',8,'自由舒展，勇于向前','boy'],
-        ['恒','héng',9,'持之以恒，坚定长久','boy'], ['洋','yáng',9,'胸襟开阔，海纳百川','boy'], ['洛','luò',9,'温雅聪慧，风骨清朗','girl'], ['洪','hóng',9,'气度宽广，力量充沛','boy'],
-        ['泉','quán',9,'清源不竭，纯粹而有生命力','neutral'], ['海','hǎi',10,'心有大海，眼里有远方','boy'], ['浩','hào',10,'浩然开阔，正直坦荡','boy'], ['涛','tāo',10,'有潮涌的力量，也有向前的勇气','boy'],
-        ['航','háng',10,'向着远方，稳稳启航','boy'], ['润','rùn',10,'温润有度，照拂身边的人','neutral'], ['淇','qí',11,'清澈灵秀，文雅有致','girl'], ['涵','hán',11,'内有丘壑，涵养深厚','neutral'],
-        ['清','qīng',11,'清澈明朗，知进退而有分寸','neutral'], ['雪','xuě',11,'纯净坚韧，轻盈自持','girl'], ['淑','shū',11,'温柔端正，善良有礼','girl'], ['敏','mǐn',11,'聪敏敏锐，反应明快','neutral'],
-        ['鸿','hóng',11,'鸿鹄之志，宽广有为','boy'], ['惠','huì',12,'温厚聪慧，心存善意','girl'], ['博','bó',12,'见识广博，胸怀开阔','boy'], ['斐','fěi',12,'文采斐然，灵气自成','neutral'],
-        ['湘','xiāng',12,'山水清远，温柔坚定','girl'], ['渲','xuàn',12,'色彩丰盈，气韵流动','girl'], ['溪','xī',13,'清灵自在，保持自己的节奏','girl'], ['滢','yíng',13,'水光清澈，明净灵动','girl'],
-        ['熙','xī',14,'光明和乐，明朗有福','neutral'], ['漫','màn',14,'自由舒展，温柔丰沛','girl'], ['澄','chéng',15,'澄澈笃定，内心明净','neutral'], ['潼','tóng',15,'水势丰盈，灵秀有力量','neutral'],
-        ['慧','huì',15,'聪慧通透，温柔而坚定','girl'], ['澜','lán',15,'心有波澜，也有定力','girl'], ['霖','lín',16,'久下之雨，润物无声','neutral'], ['霏','fēi',16,'云气轻盈，气质清柔','girl'],
-        ['凝','níng',16,'专注沉静，温柔有力量','girl'], ['澈','chè',15,'清透坦荡，目光坚定','neutral'], ['濠','háo',17,'深广包容，自在开阔','boy'], ['瀚','hàn',19,'瀚海无边，志向深远','boy'], ['灏','hào',21,'水势浩大，气度开阔','boy']
-      ];
-
-      const woodChars = [
-        ['月','yuè',4,'皎洁温柔，心有光亮','girl'], ['艺','yì',4,'才华与创造力，灵动有趣','neutral'], ['元','yuán',4,'本真有始，元气充盈','neutral'], ['今','jīn',4,'珍惜当下，清醒自在','neutral'],
-        ['东','dōng',5,'向着日出的方向，明朗有志','boy'], ['兰','lán',5,'幽香自持，温雅有品','girl'], ['卉','huì',5,'草木初盛，柔韧有生机','girl'], ['巧','qiǎo',5,'灵巧聪慧，心思细致','girl'],
-        ['仪','yí',5,'端庄有礼，自有分寸','girl'], ['玉','yù',5,'温润珍贵，清澈坚定','neutral'], ['可','kě',5,'明快可亲，温柔可靠','neutral'], ['旭','xù',6,'如日初升，明亮向上','boy'],
-        ['朵','duǒ',6,'柔软盛放，自在可爱','girl'], ['乔','qiáo',6,'高大舒展，清俊有风骨','neutral'], ['吉','jí',6,'吉祥如意，明快利落','neutral'], ['芊','qiān',6,'草木繁盛，轻盈有韧性','girl'],
-        ['尧','yáo',6,'端正高远，谦和有德','boy'], ['权','quán',6,'有判断力，也有担当','boy'], ['芝','zhī',6,'灵秀清芬，质朴有福','girl'], ['庆','qìng',6,'喜庆丰足，心有欢喜','neutral'],
-        ['竹','zhú',6,'虚心坚韧，清雅有节','neutral'], ['芳','fāng',7,'芬芳明朗，温柔自信','girl'], ['岑','cén',7,'静谧有山意，沉稳可靠','neutral'], ['言','yán',7,'言而有信，清晰坦荡','neutral'],
-        ['杉','shān',7,'挺拔清正，向上生长','boy'], ['君','jūn',7,'温润如君，端正有礼','neutral'], ['芸','yún',7,'草木茂盛，勤勉有才','girl'], ['启','qǐ',7,'启程启智，心有开阔处','boy'],
-        ['欣','xīn',8,'欣然明朗，常怀热爱','neutral'], ['枫','fēng',8,'有秋日的丰盛，也有自由的风','neutral'], ['凯','kǎi',8,'凯旋而归，明快坚定','boy'], ['佳','jiā',8,'美好合宜，温柔得体','neutral'],
-        ['茂','mào',8,'草木丰茂，生命力旺盛','boy'], ['奇','qí',8,'独特聪慧，保持好奇','neutral'], ['杭','háng',8,'温润有根，行稳致远','boy'], ['杰','jié',8,'出色卓然，才华有光','boy'],
-        ['若','ruò',8,'从容谦和，清新自然','girl'], ['宜','yí',8,'安适合宜，温暖可靠','girl'], ['荣','róng',9,'草木荣盛，所行皆有收获','neutral'], ['科','kē',9,'求知明理，稳稳成长','boy'],
-        ['珂','kē',9,'清润如玉，明净可亲','girl'], ['奕','yì',9,'神采奕奕，光明舒展','neutral'], ['彦','yàn',9,'才德兼备，温雅有才','boy'], ['柳','liǔ',9,'柔韧有姿，轻盈自在','girl'],
-        ['语','yǔ',9,'有表达力，也有倾听的温柔','girl'], ['贵','guì',9,'珍贵自重，知足有福','neutral'], ['茹','rú',9,'温柔有容，心性坚韧','girl'], ['桥','qiáo',10,'连接彼此，也通向远方','neutral'],
-        ['桐','tóng',10,'梧桐高洁，安静有力量','neutral'], ['健','jiàn',10,'身心健朗，笃定向前','boy'], ['莹','yíng',10,'晶莹明亮，心思纯粹','girl'], ['荷','hé',10,'清雅自持，出尘不染','girl'],
-        ['家','jiā',10,'有归处，也有守护的力量','neutral'], ['桦','huà',10,'洁白挺拔，生命力旺盛','neutral'], ['卿','qīng',10,'温雅亲切，自有风度','girl'], ['莉','lì',10,'清新秀美，明丽可亲','girl'],
-        ['梓','zǐ',11,'有根有本，安静生长','neutral'], ['菲','fēi',11,'芳菲明媚，轻盈有活力','girl'], ['绮','qǐ',11,'美好绮丽，灵气流转','girl'], ['康','kāng',11,'安康顺遂，平和有福','neutral'],
-        ['梦','mèng',11,'心有所向，保有想象力','girl'], ['萌','méng',11,'初生蓬勃，天真可爱','girl'], ['菁','jīng',11,'草木精华，聪慧鲜活','girl'], ['萧','xiāo',11,'清远疏朗，有自己的节奏','neutral'],
-        ['翊','yì',11,'辅翼相成，坚定而善良','boy'], ['菡','hàn',11,'含苞有光，温柔坚韧','girl'], ['皓','hào',12,'明亮洁白，心怀正气','boy'], ['萱','xuān',12,'忘忧安然，柔韧有生机','girl'],
-        ['琴','qín',12,'有审美，也有安静的力量','girl'], ['谦','qiān',12,'谦和自省，越走越远','boy'], ['琳','lín',12,'美玉成林，温润聪慧','girl'], ['琪','qí',12,'美玉珍奇，明净有光','girl'],
-        ['嘉','jiā',14,'美好嘉许，心有善意','neutral'], ['赫','hè',14,'光明显达，自信坦荡','boy'], ['歌','gē',14,'热爱生活，明快自由','girl'], ['蔓','màn',14,'柔韧延展，自在生长','girl'],
-        ['蔼','ǎi',14,'温和亲切，待人有光','neutral'], ['蕙','huì',15,'蕙质兰心，聪敏温柔','girl'], ['憬','jǐng',15,'心有所憬，保持向往','neutral'], ['蕊','ruǐ',15,'花心初绽，柔软有生命力','girl'],
-        ['樱','yīng',15,'明媚灵动，温柔有朝气','girl'], ['薇','wēi',16,'坚韧细腻，清雅自持','girl'], ['橙','chéng',16,'明亮甜润，真诚有活力','neutral'], ['璟','jǐng',16,'玉的光彩，清明坚定','neutral'],
-        ['薪','xīn',16,'薪火相传，持续成长','boy'], ['檀','tán',17,'沉静有香，坚韧有根','neutral'], ['懋','mào',17,'勤勉有成，生命丰盛','boy'], ['藜','lí',18,'朴实坚韧，向光而生','neutral'],
-        ['藤','téng',18,'柔韧攀援，彼此成就','neutral'], ['麒','qí',19,'祥瑞端正，胸有远志','boy'], ['蘅','héng',19,'清芬自持，内在丰盈','girl']
-      ];
-
+      function buildCharacterList(element) {
+        const genericMeaning = element === 'water' ? '水意流动，寓意吉祥' : '草木生长，寓意吉祥';
+        const overrides = characterConfig.overrides[element] || {};
+        return characterConfig[element].map(([char, pinyin, strokes]) => {
+          const override = overrides[char] || [];
+          return [char, pinyin, strokes, override[0] || genericMeaning, override[1] || 'neutral'];
+        });
+      }
+      const waterChars = buildCharacterList('water');
+      const woodChars = buildCharacterList('wood');
       const meaningMap = {
         '清和': { summary: '清是澄澈与明朗，和是温柔与分寸。这个名字像水面被风轻轻拂过：有自己的清醒，也愿意与世界相处得和顺。', items: [['清','清澈明朗，不浑浊，不喧哗'],['和','和而不同，柔软却有边界']] },
         '梓沐': { summary: '梓有根，沐有润。一个向下扎根，一个向上承光，合在一起是“被爱滋养，也有自己的生长方向”。', items: [['梓','有根有本，安静生长'],['沐','沐光而行，被温柔滋养']] },
@@ -536,10 +609,54 @@
         '林梓': { summary: '林与梓都带着木的根性，名字气质安稳、端正，像把“好好长大”写得具体而温柔。', items: [['林','枝叶相依，安稳有依靠'],['梓','有根有本，安静生长']] },
         '林沐': { summary: '林木得水而生，沐意为承受洗润与光照。这个名字温柔、干净，也带着持续向上的生命感。', items: [['林','草木成林，生长有根'],['沐','沐光而行，被温柔滋养']] }
       };
-
       const allChars = [...waterChars.map(([char, pinyin, strokes, meaning, style]) => ({char, pinyin, strokes, meaning, style, element:'water'})), ...woodChars.map(([char, pinyin, strokes, meaning, style]) => ({char, pinyin, strokes, meaning, style, element:'wood'}))];
       const STORAGE_KEY = 'jianzidingming-state-v1';
+      const AI_STORAGE_KEY = 'jianzidingming-ai-config-v1';
       const INITIAL_DEMO_POOL = ['清','梓','沐','和'];
+      const DEFAULT_AI_CONFIG = {
+        provider: 'local',
+        format: 'responses',
+        baseUrl: 'https://opencode.ai/zen/v1/responses',
+        model: 'gpt-5.5',
+        apiKey: '',
+        persistKey: false
+      };
+
+      function loadAIConfig() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(AI_STORAGE_KEY) || 'null');
+          if (!saved || typeof saved !== 'object') return {...DEFAULT_AI_CONFIG};
+          const persistKey = saved.persistKey === true;
+          return {
+            provider: saved.provider === 'zen' ? 'zen' : 'local',
+            format: saved.format === 'chat.completions' ? 'chat.completions' : 'responses',
+            baseUrl: typeof saved.baseUrl === 'string' && saved.baseUrl.trim() ? saved.baseUrl.trim() : DEFAULT_AI_CONFIG.baseUrl,
+            model: typeof saved.model === 'string' && saved.model.trim() ? saved.model.trim() : DEFAULT_AI_CONFIG.model,
+            apiKey: persistKey && typeof saved.apiKey === 'string' ? saved.apiKey : '',
+            persistKey
+          };
+        } catch (error) {
+          return {...DEFAULT_AI_CONFIG};
+        }
+      }
+
+      function persistAIConfig(config) {
+        const payload = {
+          provider: config.provider,
+          format: config.format,
+          baseUrl: config.baseUrl,
+          model: config.model,
+          persistKey: config.persistKey
+        };
+        if (config.persistKey && config.apiKey) payload.apiKey = config.apiKey;
+        try {
+          localStorage.setItem(AI_STORAGE_KEY, JSON.stringify(payload));
+          state.aiStorageReady = true;
+        } catch (error) {
+          state.aiStorageReady = false;
+          showToast('AI 设置已应用，但浏览器未允许本地存储');
+        }
+      }
 
       function loadPersistedState() {
         try {
@@ -602,8 +719,11 @@
         length: savedState.length || 2,
         nameChars: savedState.nameChars ?? ['', ''],
         favorites: savedState.favorites ?? [],
+        aiConfig: loadAIConfig(),
+        aiExplanation: null,
         loading: false,
         storageReady: true,
+        aiStorageReady: true,
         toastTimer: null
       };
 
@@ -686,14 +806,39 @@
         container.innerHTML = suggestions.map((suggestion, index) => `<button type="button" class="tip-card" data-suggestion="${escapeHTML(suggestion.name)}"><span class="tip-index">${labels[index]}</span><span><strong>${escapeHTML(suggestion.name)}</strong><p>${escapeHTML(suggestion.description)}</p></span></button>`).join('');
       }
 
+      function getAIStatusLabel() {
+        if (state.aiConfig.provider !== 'zen') return '本地演示';
+        const keyStatus = state.aiConfig.apiKey ? '' : ' · 待配置 Key';
+        return `Zen · ${state.aiConfig.model}${keyStatus}`;
+      }
+
+      function renderAIConfigStatus() {
+        const button = $('#settings-open');
+        const status = $('#settings-status');
+        if (button) button.title = state.aiConfig.provider === 'zen' ? `当前使用 OpenCode Zen：${state.aiConfig.model}` : '当前使用本地演示';
+        if (!status) return;
+        status.textContent = state.aiConfig.provider === 'zen'
+          ? (state.aiConfig.apiKey ? `已配置 Zen · ${state.aiConfig.model}` : '已选择 Zen，但尚未配置 API Key')
+          : '当前使用本地演示，不会产生接口请求';
+        status.classList.toggle('is-warning', state.aiConfig.provider === 'zen' && !state.aiConfig.apiKey);
+      }
+
+      function renderExplanation(data) {
+        $('#ai-summary').textContent = data.summary;
+        $('#ai-summary').classList.toggle('is-remote', data.source === 'zen');
+        $('#meaning-list').innerHTML = (data.items || []).map(([glyph, meaning]) => `<div class="meaning-item"><span class="meaning-glyph">${escapeHTML(glyph)}</span><span><strong>${escapeHTML(glyph)} · 字义</strong><p>${escapeHTML(meaning)}</p></span></div>`).join('');
+      }
+
       function renderName() {
         const chars = state.nameChars.slice(0, state.length);
         $('#name-display').innerHTML = `<span class="surname">${escapeHTML(state.surname || '姓')}</span>` + Array.from({length: state.length}, (_, index) => `<span class="${chars[index] ? 'name-char' : 'empty-slot'}">${escapeHTML(chars[index] || '')}</span>`).join('');
         $('#name-status').textContent = `${state.surname}${chars.filter(Boolean).join('')}`;
         const key = chars.filter(Boolean).join('');
-        const data = meaningMap[key] || meaningMap[state.surname + key] || makeDynamicMeaning(chars);
-        $('#ai-summary').textContent = data.summary;
-        $('#meaning-list').innerHTML = data.items.map(([glyph, meaning]) => `<div class="meaning-item"><span class="meaning-glyph">${glyph}</span><span><strong>${glyph} · 字义</strong><p>${meaning}</p></span></div>`).join('');
+        const currentName = getCurrentName();
+        const localData = meaningMap[key] || meaningMap[state.surname + key] || makeDynamicMeaning(chars);
+        const data = state.aiExplanation?.name === currentName ? state.aiExplanation.data : localData;
+        renderExplanation(data);
+        if (!state.loading) $('#ai-status').textContent = state.aiExplanation?.name === currentName ? 'Zen 已返回' : getAIStatusLabel();
         renderFavoriteAction();
       }
 
@@ -795,6 +940,178 @@
         state.toastTimer = setTimeout(() => toast.classList.remove('is-visible'), 2200);
       }
 
+      const ZEN_ENDPOINTS = {
+        responses: 'https://opencode.ai/zen/v1/responses',
+        'chat.completions': 'https://opencode.ai/zen/v1/chat/completions'
+      };
+
+      function renderSettingsFields() {
+        $('#ai-provider').value = state.aiConfig.provider;
+        $('#ai-format').value = state.aiConfig.format;
+        $('#ai-base-url').value = state.aiConfig.baseUrl;
+        $('#ai-model').value = state.aiConfig.model;
+        $('#ai-api-key').value = state.aiConfig.apiKey;
+        $('#ai-api-key').type = 'password';
+        $('#toggle-api-key').textContent = '显示';
+        $('#ai-persist-key').checked = state.aiConfig.persistKey;
+        $('#zen-config-fields').hidden = state.aiConfig.provider !== 'zen';
+        renderAIConfigStatus();
+      }
+
+      function syncZenEndpoint() {
+        const input = $('#ai-base-url');
+        const current = input.value.trim();
+        if (!current || Object.values(ZEN_ENDPOINTS).includes(current)) input.value = ZEN_ENDPOINTS[$('#ai-format').value];
+      }
+
+      function saveAISettings() {
+        const provider = $('#ai-provider').value === 'zen' ? 'zen' : 'local';
+        const format = $('#ai-format').value === 'chat.completions' ? 'chat.completions' : 'responses';
+        const baseUrl = $('#ai-base-url').value.trim();
+        const model = $('#ai-model').value.trim();
+        const apiKey = $('#ai-api-key').value.trim();
+        const persistKey = $('#ai-persist-key').checked;
+        if (provider === 'zen' && !baseUrl) {
+          showToast('请填写 Zen 接口地址');
+          $('#ai-base-url').focus();
+          return false;
+        }
+        if (provider === 'zen' && !model) {
+          showToast('请填写 Zen 模型名称');
+          $('#ai-model').focus();
+          return false;
+        }
+        if (provider === 'zen' && !Object.values(ZEN_ENDPOINTS).includes(baseUrl)) {
+          showToast('当前代理只支持 OpenCode Zen 官方接口地址');
+          $('#ai-base-url').focus();
+          return false;
+        }
+        if (provider === 'zen' && Object.values(ZEN_ENDPOINTS).includes(baseUrl)) {
+          const chatOnlyFamily = /deepseek|glm|kimi|qwen|minimax/i;
+          const responseOnlyFamily = /^(gpt|grok)-/i;
+          if (chatOnlyFamily.test(model) && format !== 'chat.completions') {
+            showToast('该 Zen 模型通常使用 Chat Completions，请切换请求格式');
+            $('#ai-format').focus();
+            return false;
+          }
+          if (responseOnlyFamily.test(model) && format !== 'responses') {
+            showToast('该 Zen 模型通常使用 Responses，请切换请求格式');
+            $('#ai-format').focus();
+            return false;
+          }
+        }
+        state.aiConfig = {provider, format, baseUrl: baseUrl || ZEN_ENDPOINTS[format], model: model || DEFAULT_AI_CONFIG.model, apiKey, persistKey};
+        state.aiExplanation = null;
+        persistAIConfig(state.aiConfig);
+        renderAIConfigStatus();
+        renderName();
+        showToast(provider === 'zen' ? 'Zen 设置已保存' : '已切换为本地演示');
+        return true;
+      }
+
+      function textFromAIContent(content) {
+        if (typeof content === 'string') return content;
+        if (Array.isArray(content)) return content.map(part => typeof part === 'string' ? part : (part?.text || part?.content || '')).join('');
+        if (content && typeof content === 'object') return content.text || content.content || '';
+        return '';
+      }
+
+      function extractAIText(data) {
+        if (typeof data?.output_text === 'string' && data.output_text.trim()) return data.output_text.trim();
+        const responseText = Array.isArray(data?.output)
+          ? data.output.map(item => textFromAIContent(item?.content || item?.text)).join('')
+          : '';
+        if (responseText.trim()) return responseText.trim();
+        const messageText = textFromAIContent(data?.choices?.[0]?.message?.content);
+        return messageText.trim();
+      }
+
+      function buildZenPrompt() {
+        const selected = getCurrentChars().filter(Boolean).map(char => charByGlyph(char)).filter(Boolean);
+        const characterNotes = selected.map(item => `${item.char}（${item.element === 'water' ? '水' : '木'}，${item.strokes}画）：${item.meaning}`).join('；');
+        return `请解释宝宝名字“${getCurrentName()}”。姓氏是“${state.surname}”，名字字数为${state.length}字，选中字为：${characterNotes || '尚未完成'}。请从字义、名字整体气质、五行字面归类和普通话读音节奏四个角度，用温和、克制、易懂的中文写 2—3 段话。不要声称五行或起名能决定健康、命运等事实，也不要编造出处。只输出解释正文，不要输出 JSON、标题或 Markdown 列表。`;
+      }
+
+      function getZenRequestRoute() {
+        if (window.location.protocol === 'file:') return {url: 'http://127.0.0.1:4173/api/zen', proxy: true};
+        if (window.location.protocol === 'http:' || window.location.protocol === 'https:') return {url: '/api/zen', proxy: true};
+        return {url: state.aiConfig.baseUrl, proxy: false};
+      }
+
+      async function requestZenExplanation() {
+        if (!state.aiConfig.apiKey) throw new Error('请先在设置中填写 API Key，再使用 Zen 实时解释。');
+        if (!/^https?:\/\//i.test(state.aiConfig.baseUrl)) throw new Error('接口地址需要以 http:// 或 https:// 开头。');
+        const systemPrompt = '你是一位谨慎的中文起名助手。只提供文化与语言层面的解释，不把传统五行当作科学或医学结论。';
+        const userPrompt = buildZenPrompt();
+        const payload = state.aiConfig.format === 'chat.completions'
+          ? {model: state.aiConfig.model, messages: [{role: 'system', content: systemPrompt}, {role: 'user', content: userPrompt}], max_tokens: 600}
+          : {model: state.aiConfig.model, instructions: systemPrompt, input: userPrompt, max_output_tokens: 600};
+        const route = getZenRequestRoute();
+        const requestBody = route.proxy ? {apiKey: state.aiConfig.apiKey, baseUrl: state.aiConfig.baseUrl, payload} : payload;
+        let response;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+        try {
+          response = await fetch(route.url, {method: 'POST', credentials: 'omit', signal: controller.signal, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(requestBody)});
+        } catch (error) {
+          if (error.name === 'AbortError') throw new Error('Zen 请求超时，请检查网络或稍后重试。');
+          if (route.proxy) throw new Error('同源 /api/zen 代理未连接。纯静态站点需要配置服务器反向代理，或运行项目中的 server.js。');
+          throw new Error('Zen 请求未完成，请检查接口地址和网络连接。');
+        } finally {
+          clearTimeout(timeoutId);
+        }
+        const raw = await response.text();
+        let data = {};
+        try { data = raw ? JSON.parse(raw) : {}; } catch (error) { data = {raw}; }
+        if (!response.ok) {
+          const detail = data?.error?.message || data?.message || raw.slice(0, 160) || `HTTP ${response.status}`;
+          if (route.proxy && (response.status === 404 || response.status === 405 || /^\s*</.test(raw))) throw new Error('当前站点没有 /api/zen 代理。纯静态部署需要配置反向代理，或改用项目中的 server.js 启动页面。');
+          throw new Error(`Zen 返回错误：${detail}`);
+        }
+        if (route.proxy && /^\s*</.test(raw)) throw new Error('当前站点没有 /api/zen 代理。纯静态部署需要配置反向代理，或改用项目中的 server.js 启动页面。');
+        const text = extractAIText(data);
+        if (!text) throw new Error('Zen 已返回，但没有找到可显示的文本内容。');
+        return text;
+      }
+
+      function renderAIError(message) {
+        $('#ai-summary').textContent = message;
+        $('#ai-summary').classList.remove('is-remote');
+        $('#meaning-list').innerHTML = '';
+        $('#ai-status').textContent = '请求未完成';
+      }
+
+      async function explainCurrentName() {
+        if (state.loading) return;
+        if (!isCompleteName()) {
+          showToast('请先完成姓氏和名字组合');
+          return;
+        }
+        state.loading = true;
+        $('#ai-card').classList.add('loading');
+        $('#ai-action').disabled = true;
+        $('#ai-action').textContent = '正在整理这份心意…';
+        $('#ai-status').innerHTML = 'AI 正在解析 <span class="ai-pulse"><i></i><i></i><i></i></span>';
+        try {
+          if (state.aiConfig.provider === 'zen') {
+            const text = await requestZenExplanation();
+            state.aiExplanation = {name: getCurrentName(), data: {summary: text, items: [], source: 'zen'}};
+            showToast('已完成 Zen 实时解释');
+          } else {
+            await new Promise(resolve => setTimeout(resolve, 720));
+            state.aiExplanation = null;
+          }
+          renderName();
+        } catch (error) {
+          renderAIError(error.message || 'AI 请求未完成，请检查设置后重试。');
+        } finally {
+          state.loading = false;
+          $('#ai-card').classList.remove('loading');
+          $('#ai-action').disabled = false;
+          $('#ai-action').textContent = '重新解析这个名字';
+        }
+      }
+
       function updateElement(nextElement) {
         state.element = nextElement;
         state.stroke = 'all';
@@ -859,7 +1176,20 @@
         if (restoreButton) restoreFavorite(Number(restoreButton.dataset.restoreFavorite));
         if (removeButton) removeFavorite(Number(removeButton.dataset.removeFavorite));
       });
-      $('#ai-action').addEventListener('click', () => { if (state.loading) return; state.loading = true; $('#ai-card').classList.add('loading'); $('#ai-action').disabled = true; $('#ai-action').textContent = '正在整理这份心意…'; $('#ai-status').innerHTML = 'AI 正在解析 <span class="ai-pulse"><i></i><i></i><i></i></span>'; setTimeout(() => { state.loading = false; $('#ai-card').classList.remove('loading'); $('#ai-action').disabled = false; $('#ai-action').textContent = '重新解析这个名字'; $('#ai-status').textContent = 'AI 已就绪'; renderName(); }, 720); });
+      $('#ai-action').addEventListener('click', explainCurrentName);
+      $('#settings-open').addEventListener('click', () => { renderSettingsFields(); $('#settings-dialog').showModal(); });
+      $('#settings-close').addEventListener('click', () => $('#settings-dialog').close());
+      $('#settings-cancel').addEventListener('click', () => $('#settings-dialog').close());
+      $('#settings-dialog').addEventListener('click', event => { if (event.target === $('#settings-dialog')) $('#settings-dialog').close(); });
+      $('#ai-settings-form').addEventListener('submit', event => { event.preventDefault(); if (saveAISettings()) $('#settings-dialog').close(); });
+      $('#ai-provider').addEventListener('change', event => { $('#zen-config-fields').hidden = event.target.value !== 'zen'; });
+      $('#ai-format').addEventListener('change', syncZenEndpoint);
+      $('#toggle-api-key').addEventListener('click', () => {
+        const input = $('#ai-api-key');
+        const shouldShow = input.type === 'password';
+        input.type = shouldShow ? 'text' : 'password';
+        $('#toggle-api-key').textContent = shouldShow ? '隐藏' : '显示';
+      });
       window.addEventListener('beforeunload', persistState);
 
       $('#character-search').value = state.query;
@@ -871,6 +1201,7 @@
       renderPool();
       renderName();
       renderFavorites();
+      renderSettingsFields();
     </script>
   </body>
 </html>
