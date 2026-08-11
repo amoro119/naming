@@ -764,10 +764,7 @@
         inspirationRightElement: savedState.inspirationRightElement || 'any',
         favorites: savedState.favorites ?? [],
         inspirationPoolKey: '',
-        inspirationOrder: [],
-        inspirationRightOrder: [],
-        inspirationDistances: [],
-        inspirationRowStarts: [],
+        inspirationPairs: [],
         inspirationPairCount: 0,
         inspirationCursor: 0,
         inspirationSuggestions: [],
@@ -912,66 +909,58 @@
         return leftItems.length * rightItems.length - selfPairs;
       }
 
-      function beginInspirationCycle(poolKey) {
-        state.inspirationPoolKey = poolKey;
-        const pattern = getInspirationPattern();
-        if (!pattern) {
-          state.inspirationOrder = shuffleCopy(state.pool);
-          state.inspirationRightOrder = [];
-          state.inspirationDistances = shuffleCopy(Array.from({ length: Math.max(0, state.pool.length - 1) }, (_, index) => index + 1));
-        } else {
-          state.inspirationOrder = shuffleCopy(state.pool.filter(item => !pattern.leftElement || item.element === pattern.leftElement));
-          state.inspirationRightOrder = shuffleCopy(state.pool.filter(item => !pattern.rightElement || item.element === pattern.rightElement));
-          state.inspirationDistances = [];
-          state.inspirationRowStarts = [0];
-          state.inspirationOrder.forEach(left => {
-            const excludesSelf = state.inspirationRightOrder.some(right => right.char === left.char);
-            const rowSize = state.inspirationRightOrder.length - (excludesSelf ? 1 : 0);
-            state.inspirationRowStarts.push(state.inspirationRowStarts[state.inspirationRowStarts.length - 1] + rowSize);
-          });
-        }
-        state.inspirationPairCount = countInspirationPairs();
-        state.inspirationCursor = 0;
-      }
-
-      function getInspirationAt(position) {
-        const pattern = getInspirationPattern();
-        let left;
-        let right;
-        if (!pattern) {
-          const count = state.inspirationOrder.length;
-          const distanceIndex = Math.floor(position / count);
-          const firstIndex = position % count;
-          const distance = state.inspirationDistances[distanceIndex];
-          left = state.inspirationOrder[firstIndex];
-          right = state.inspirationOrder[(firstIndex + distance) % count];
-        } else {
-          if (!state.inspirationOrder.length || !state.inspirationRightOrder.length) return null;
-          let leftIndex = 0;
-          let low = 0;
-          let high = state.inspirationRowStarts.length - 1;
-          while (low <= high) {
-            const middle = Math.floor((low + high) / 2);
-            if (state.inspirationRowStarts[middle] <= position) {
-              leftIndex = middle;
-              low = middle + 1;
-            } else {
-              high = middle - 1;
-            }
-          }
-          if (leftIndex >= state.inspirationOrder.length) return null;
-          const leftRowStart = state.inspirationRowStarts[leftIndex];
-          let rightIndex = position - leftRowStart;
-          left = state.inspirationOrder[leftIndex];
-          const excludedIndex = state.inspirationRightOrder.findIndex(item => item.char === left.char);
-          if (excludedIndex >= 0 && rightIndex >= excludedIndex) rightIndex += 1;
-          right = state.inspirationRightOrder[rightIndex];
-        }
-        if (!left || !right) return null;
+      function makeInspirationPair(left, right) {
         return {
           name: `${left.char}${right.char}`,
           description: `${left.meaning.split('，')[0]}，${right.meaning.split('，')[0]}。`
         };
+      }
+
+      function buildInspirationPairs() {
+        const pattern = getInspirationPattern();
+        const leftItems = shuffleCopy(state.pool.filter(item => !pattern?.leftElement || item.element === pattern.leftElement));
+        const rightItems = state.pool.filter(item => !pattern?.rightElement || item.element === pattern.rightElement);
+        if (!leftItems.length || !rightItems.length) return [];
+
+        const queues = new Map(leftItems.map(left => [left, shuffleCopy(rightItems.filter(right => right.char !== left.char))]));
+        const pairs = [];
+        let activeLefts = leftItems;
+        let lastLeft = null;
+        let lastRightChar = '';
+        while (activeLefts.length) {
+          if (activeLefts.length > 1 && activeLefts[0] === lastLeft) {
+            const alternateIndex = activeLefts.findIndex(left => left !== lastLeft);
+            [activeLefts[0], activeLefts[alternateIndex]] = [activeLefts[alternateIndex], activeLefts[0]];
+          }
+          const usedRightChars = new Set();
+          const nextActiveLefts = [];
+          for (const left of activeLefts) {
+            const queue = queues.get(left);
+            if (!queue.length) continue;
+            let rightIndex = queue.findIndex(right => !usedRightChars.has(right.char) && right.char !== lastRightChar);
+            if (rightIndex < 0) rightIndex = queue.findIndex(right => !usedRightChars.has(right.char));
+            if (rightIndex < 0) rightIndex = 0;
+            const [right] = queue.splice(rightIndex, 1);
+            pairs.push(makeInspirationPair(left, right));
+            usedRightChars.add(right.char);
+            lastLeft = left;
+            lastRightChar = right.char;
+            if (queue.length) nextActiveLefts.push(left);
+          }
+          activeLefts = shuffleCopy(nextActiveLefts);
+        }
+        return pairs;
+      }
+
+      function beginInspirationCycle(poolKey) {
+        state.inspirationPoolKey = poolKey;
+        state.inspirationPairs = buildInspirationPairs();
+        state.inspirationPairCount = state.inspirationPairs.length;
+        state.inspirationCursor = 0;
+      }
+
+      function getInspirationAt(position) {
+        return state.inspirationPairs[position] || null;
       }
 
       function takeNextInspirationBatch() {
