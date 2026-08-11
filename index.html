@@ -623,6 +623,7 @@
       const AI_STORAGE_KEY = 'jianzidingming-ai-config-v1';
       const INITIAL_DEMO_POOL = ['清','梓','沐','和'];
       const DEFAULT_SURNAME = '钱';
+      const AI_OUTPUT_TOKEN_LIMIT = 1600;
       const DEFAULT_AI_CONFIG = {
         provider: 'local',
         format: 'responses',
@@ -894,7 +895,8 @@
         const localData = meaningMap[key] || meaningMap[state.surname + key] || makeDynamicMeaning(chars);
         const data = state.aiExplanation?.name === currentName ? state.aiExplanation.data : localData;
         renderExplanation(data);
-        if (!state.loading) $('#ai-status').textContent = state.aiExplanation?.name === currentName ? 'Zen 已返回' : getAIStatusLabel();
+        const remoteData = state.aiExplanation?.name === currentName ? state.aiExplanation.data : null;
+        if (!state.loading) $('#ai-status').textContent = remoteData ? (remoteData.truncated ? 'Zen 已返回 · 内容被截断' : 'Zen 已返回') : getAIStatusLabel();
         renderFavoriteAction();
       }
 
@@ -1272,8 +1274,8 @@
 只输出最终点评，不输出你的分析过程、检查清单、JSON 或 Markdown 代码块。`;
         const userPrompt = buildZenPrompt();
         const payload = state.aiConfig.format === 'chat.completions'
-          ? {model: state.aiConfig.model, messages: [{role: 'system', content: systemPrompt}, {role: 'user', content: userPrompt}], max_tokens: 600}
-          : {model: state.aiConfig.model, instructions: systemPrompt, input: userPrompt, max_output_tokens: 600};
+          ? {model: state.aiConfig.model, messages: [{role: 'system', content: systemPrompt}, {role: 'user', content: userPrompt}], max_tokens: AI_OUTPUT_TOKEN_LIMIT}
+          : {model: state.aiConfig.model, instructions: systemPrompt, input: userPrompt, max_output_tokens: AI_OUTPUT_TOKEN_LIMIT};
         const route = getZenRequestRoute();
         const requestBody = route.proxy ? {apiKey: state.aiConfig.apiKey, baseUrl: state.aiConfig.baseUrl, payload} : payload;
         let response;
@@ -1298,8 +1300,12 @@
         }
         if (route.proxy && /^\s*</.test(raw)) throw new Error('当前站点没有 /api/zen 代理。纯静态部署需要配置反向代理，或改用项目中的 server.js 启动页面。');
         const text = extractAIText(data);
-        if (!text) throw new Error('Zen 已返回，但没有找到可显示的文本内容。');
-        return text;
+        const truncated = data?.choices?.[0]?.finish_reason === 'length' || data?.status === 'incomplete' || data?.incomplete_details?.reason === 'max_output_tokens';
+        if (!text) {
+          if (truncated) throw new Error('Zen 已达到输出长度上限，但还没有生成最终正文。请再次解析。');
+          throw new Error('Zen 已返回，但没有找到可显示的文本内容。');
+        }
+        return {text, truncated};
       }
 
       function renderAIError(message) {
@@ -1323,9 +1329,9 @@
         $('#ai-status').innerHTML = 'AI 正在解析 <span class="ai-pulse"><i></i><i></i><i></i></span>';
         try {
           if (state.aiConfig.provider === 'zen') {
-            const text = await requestZenExplanation();
-            state.aiExplanation = {name: getCurrentName(), data: {summary: text, items: [], source: 'zen'}};
-            showToast('已完成 Zen 实时解释');
+            const result = await requestZenExplanation();
+            state.aiExplanation = {name: getCurrentName(), data: {summary: result.text, items: [], source: 'zen', truncated: result.truncated}};
+            showToast(result.truncated ? 'Zen 返回内容达到长度上限，已显示部分内容' : '已完成 Zen 实时解释');
           } else {
             await new Promise(resolve => setTimeout(resolve, 720));
             state.aiExplanation = null;
