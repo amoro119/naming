@@ -1023,21 +1023,46 @@
         return true;
       }
 
-      function textFromAIContent(content) {
+      function textFromAIContent(content, depth = 0) {
+        if (depth > 8 || content == null) return '';
         if (typeof content === 'string') return content;
-        if (Array.isArray(content)) return content.map(part => typeof part === 'string' ? part : (part?.text || part?.content || '')).join('');
-        if (content && typeof content === 'object') return content.text || content.content || '';
+        if (Array.isArray(content)) return content.map(item => textFromAIContent(item, depth + 1)).join('');
+        if (typeof content !== 'object') return '';
+        for (const key of ['text', 'value', 'output_text', 'content', 'parts', 'message', 'delta', 'result', 'response']) {
+          if (content[key] == null) continue;
+          const text = textFromAIContent(content[key], depth + 1);
+          if (text) return text;
+        }
         return '';
       }
 
       function extractAIText(data) {
-        if (typeof data?.output_text === 'string' && data.output_text.trim()) return data.output_text.trim();
-        const responseText = Array.isArray(data?.output)
-          ? data.output.map(item => textFromAIContent(item?.content || item?.text)).join('')
-          : '';
-        if (responseText.trim()) return responseText.trim();
-        const messageText = textFromAIContent(data?.choices?.[0]?.message?.content);
-        return messageText.trim();
+        const candidates = [
+          data?.output_text,
+          data?.output,
+          data?.choices?.[0]?.message?.content,
+          data?.choices?.[0]?.text,
+          data?.choices?.[0]?.delta?.content,
+          data?.content,
+          data?.candidates?.[0]?.content,
+          data?.response?.output_text,
+          data?.response?.output,
+          data?.response?.content,
+          data?.data?.output_text,
+          data?.data?.output,
+          data?.data?.choices?.[0]?.message?.content,
+          data?.data?.content,
+          data?.data?.response?.output_text,
+          data?.data?.response?.output,
+          data?.data?.response?.content,
+          data?.result,
+          data?.text
+        ];
+        for (const candidate of candidates) {
+          const text = textFromAIContent(candidate).trim();
+          if (text) return text;
+        }
+        return '';
       }
 
       function buildZenPrompt() {
