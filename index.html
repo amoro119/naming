@@ -211,7 +211,7 @@
 
       .workspace {
         display: grid;
-        grid-template-columns: minmax(390px, 1.15fr) minmax(270px, 0.72fr) minmax(330px, 0.95fr);
+        grid-template-columns: minmax(340px, 1.1fr) minmax(250px, 0.72fr) minmax(300px, 0.95fr) minmax(220px, 0.7fr);
         gap: 14px;
         max-width: 1500px;
         margin: 0 auto;
@@ -302,7 +302,7 @@
       .note-box { margin-top: 22px; padding: 13px 14px; color: var(--body); background: #f8f5ee; border: 1px solid #ede4d8; border-radius: 11px; font-size: 11px; line-height: 1.6; }
       .note-box strong { display: block; margin-bottom: 4px; color: var(--ink); font-weight: 500; }
 
-      .naming-panel { position: sticky; top: 16px; background: var(--ink); color: #f7f6f1; border-color: #303b34; box-shadow: 0 28px 75px rgba(20, 31, 24, 0.14); }
+      .naming-panel, .favorites-panel { position: sticky; top: 16px; background: var(--ink); color: #f7f6f1; border-color: #303b34; box-shadow: 0 28px 75px rgba(20, 31, 24, 0.14); }
       .naming-panel .panel-header { padding-bottom: 17px; }
       .naming-panel .panel-title { color: #f8f8f2; }
       .naming-panel .panel-caption { color: #9caaa0; }
@@ -375,12 +375,11 @@
       .ai-action:disabled { cursor: wait; opacity: 0.7; }
 
       .naming-side { min-width: 0; }
-      .favorites-section { margin-top: 18px; padding: 16px; background: #202b25; border: 1px solid #405044; border-radius: 13px; }
-      .favorites-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 11px; }
-      .favorites-title { display: flex; align-items: center; gap: 7px; margin: 0; color: #eef5ed; font-family: var(--serif); font-size: 16px; font-weight: 400; }
-      .favorites-title::before { content: "♥"; color: #d99a82; font-family: var(--sans); font-size: 12px; }
-      .favorites-count { min-width: 22px; padding: 3px 7px; color: #b9d1bd; background: #33483a; border-radius: 999px; font-size: 10px; text-align: center; }
-      .favorites-list { display: grid; gap: 7px; max-height: 220px; overflow-y: auto; scrollbar-color: #506957 transparent; scrollbar-width: thin; }
+      .favorites-panel .panel-title { color: #f8f8f2; }
+      .favorites-panel .panel-caption { color: #9caaa0; }
+      .favorites-panel .panel-count { color: #d4e5d4; background: #33483a; }
+      .favorites-panel-inner { padding: 0 23px 23px; }
+      .favorites-list { display: grid; gap: 7px; max-height: 560px; overflow-y: auto; scrollbar-color: #506957 transparent; scrollbar-width: thin; }
       .favorites-empty { padding: 14px 4px 5px; color: #91a096; font-size: 11px; line-height: 1.6; }
       .favorite-row { display: grid; grid-template-columns: minmax(0, 1fr) 30px; gap: 5px; align-items: stretch; }
       .favorite-main { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; padding: 9px 10px; color: #eef5ed; background: #2a3930; border: 1px solid #405044; border-radius: 8px; text-align: left; transition: background 160ms ease, border-color 160ms ease; }
@@ -399,10 +398,9 @@
       .toast-mark { display: grid; width: 19px; height: 19px; place-items: center; color: #35513d; background: #b8d5bb; border-radius: 50%; font-size: 11px; }
 
       @media (max-width: 1180px) {
-        .workspace { grid-template-columns: minmax(350px, 1.05fr) minmax(250px, 0.72fr); }
-        .library-panel, .naming-panel { position: static; }
-        .naming-panel { grid-column: 1 / -1; }
-        .naming-inner { display: grid; grid-template-columns: minmax(260px, 0.85fr) minmax(330px, 1fr); gap: 18px; }
+        .workspace { grid-template-columns: minmax(0, 1.6fr) minmax(260px, 0.85fr); }
+        .library-panel, .naming-panel, .favorites-panel { position: static; }
+        .naming-inner { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr); gap: 18px; }
         .ai-card { margin-top: 0; }
       }
 
@@ -413,9 +411,10 @@
         .hero { grid-template-columns: 1fr; padding-top: 29px; }
         .hero-aside { justify-content: flex-start; }
         .workspace { grid-template-columns: 1fr; }
-        .library-panel, .naming-panel { position: static; }
+        .library-panel, .naming-panel, .favorites-panel { position: static; }
         .pool-panel { order: 2; }
         .naming-panel { order: 3; grid-column: auto; }
+        .favorites-panel { order: 4; grid-column: auto; }
         .pool-inner { min-height: auto; }
         .naming-inner { display: block; }
         .ai-card { margin-top: 18px; }
@@ -433,7 +432,7 @@
         .hero-copy { font-size: 14px; }
         .hero-stat { min-width: 0; flex: 1; padding-left: 11px; }
         .hero-stat strong { font-size: 24px; }
-        .panel-header, .panel-tools, .catalog-meta, .character-grid, .pool-inner, .naming-inner { padding-left: 16px; padding-right: 16px; }
+        .panel-header, .panel-tools, .catalog-meta, .character-grid, .pool-inner, .naming-inner, .favorites-panel-inner { padding-left: 16px; padding-right: 16px; }
         .character-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); max-height: 485px; }
         .search-row { grid-template-columns: 1fr; }
         .footer { display: block; line-height: 1.7; }
@@ -594,11 +593,16 @@
                   <div class="meaning-list" id="meaning-list"></div>
                   <button type="button" class="ai-action" id="ai-action">解析这个名字</button>
                 </div>
-                <section class="favorites-section" aria-labelledby="favorites-title">
-                  <div class="favorites-header"><h3 class="favorites-title" id="favorites-title">喜欢的名字</h3><span class="favorites-count" id="favorite-count">0</span></div>
-                  <div class="favorites-list" id="favorites-list" aria-live="polite"></div>
-                </section>
               </div>
+            </div>
+          </section>
+          <section class="panel favorites-panel" aria-labelledby="favorites-title">
+            <div class="panel-header">
+              <div><h2 class="panel-title" id="favorites-title">喜欢的名字</h2><p class="panel-caption">收藏的名字会留在这里</p></div>
+              <span class="panel-count" id="favorite-count">0</span>
+            </div>
+            <div class="favorites-panel-inner">
+              <div class="favorites-list" id="favorites-list" aria-live="polite"></div>
             </div>
           </section>
         </section>
