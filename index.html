@@ -381,7 +381,8 @@
 
       @media (max-width: 1180px) {
         .workspace { grid-template-columns: minmax(350px, 1.05fr) minmax(250px, 0.72fr); }
-        .naming-panel { grid-column: 1 / -1; position: static; }
+        .library-panel, .naming-panel { position: static; }
+        .naming-panel { grid-column: 1 / -1; }
         .naming-inner { display: grid; grid-template-columns: minmax(260px, 0.85fr) minmax(330px, 1fr); gap: 18px; }
         .ai-card { margin-top: 0; }
       }
@@ -558,7 +559,7 @@
                 </div>
                 <div class="name-controls">
                   <div class="name-control-row">
-                    <div><label class="dark-label" for="surname-input">姓氏</label><input id="surname-input" class="dark-field" value="林" maxlength="2" aria-label="姓氏" /></div>
+                    <div><label class="dark-label" for="surname-input">姓氏</label><input id="surname-input" class="dark-field" value="钱" maxlength="2" aria-label="姓氏" /></div>
                     <div><span class="dark-label">名字字数</span><div class="length-options"><button class="length-option" type="button" data-length="2" aria-pressed="true">两字</button><button class="length-option" type="button" data-length="3" aria-pressed="false">三字</button></div></div>
                   </div>
                   <div class="slot-label">从候选池选择顺序</div>
@@ -613,6 +614,7 @@
       const STORAGE_KEY = 'jianzidingming-state-v1';
       const AI_STORAGE_KEY = 'jianzidingming-ai-config-v1';
       const INITIAL_DEMO_POOL = ['清','梓','沐','和'];
+      const DEFAULT_SURNAME = '钱';
       const DEFAULT_AI_CONFIG = {
         provider: 'local',
         format: 'responses',
@@ -662,6 +664,9 @@
         try {
           const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
           if (!saved || typeof saved !== 'object') return {};
+          const savedSurname = typeof saved.surname === 'string' ? saved.surname.slice(0, 2) : '';
+          const surnameTouched = saved.surnameTouched === true;
+          const surname = savedSurname === '林' && !surnameTouched ? DEFAULT_SURNAME : (savedSurname || DEFAULT_SURNAME);
           const shouldResetSeededDraft = JSON.stringify(saved.pool) === JSON.stringify(INITIAL_DEMO_POOL) && JSON.stringify(saved.nameChars) === JSON.stringify(['清','和']);
           const favorites = Array.isArray(saved.favorites) ? saved.favorites.map((entry, index) => ({
             id: typeof entry.id === 'string' ? entry.id : `favorite-${index}-${entry.savedAt || Date.now()}`,
@@ -677,7 +682,8 @@
             stroke: saved.stroke || 'all',
             quick: ['common', 'girl', 'boy'].includes(saved.quick) ? saved.quick : 'common',
             pool: shouldResetSeededDraft ? [] : (Array.isArray(saved.pool) ? saved.pool.map(charByGlyph).filter(Boolean) : null),
-            surname: typeof saved.surname === 'string' ? saved.surname.slice(0, 2) : '林',
+            surname,
+            surnameTouched,
             length: saved.length === 3 ? 3 : 2,
             nameChars: shouldResetSeededDraft ? ['', ''] : (Array.isArray(saved.nameChars) ? saved.nameChars.map(String).slice(0, 3) : null),
             favorites
@@ -696,6 +702,7 @@
             quick: state.quick,
             pool: state.pool.map(item => item.char),
             surname: state.surname,
+            surnameTouched: state.surnameTouched,
             length: state.length,
             nameChars: state.nameChars.slice(0, state.length),
             favorites: state.favorites.slice(0, 50)
@@ -715,7 +722,8 @@
         stroke: savedState.stroke || 'all',
         quick: savedState.quick || 'common',
         pool: savedState.pool ?? [],
-        surname: savedState.surname || '林',
+        surname: savedState.surname || DEFAULT_SURNAME,
+        surnameTouched: savedState.surnameTouched === true,
         length: savedState.length || 2,
         nameChars: savedState.nameChars ?? ['', ''],
         favorites: savedState.favorites ?? [],
@@ -730,12 +738,17 @@
       const $ = selector => document.querySelector(selector);
       const $$ = selector => [...document.querySelectorAll(selector)];
 
+      function normalizePinyin(value) {
+        return String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ü/g, 'u').toLowerCase();
+      }
+
       function getCatalog() {
-        const query = state.query.trim().toLowerCase();
+        const rawQuery = state.query.trim();
+        const query = normalizePinyin(rawQuery);
         return allChars.filter(item => {
           const matchesElement = item.element === state.element;
           const matchesStroke = state.stroke === 'all' || item.strokes === Number(state.stroke);
-          const matchesQuery = !query || item.char.includes(query) || item.pinyin.includes(query) || item.meaning.includes(state.query.trim());
+          const matchesQuery = !rawQuery || item.char.includes(rawQuery) || normalizePinyin(item.pinyin).includes(query) || item.meaning.includes(rawQuery);
           const matchesQuick = state.quick === 'common' || item.style === state.quick;
           return matchesElement && matchesStroke && matchesQuery && matchesQuick;
         });
@@ -890,6 +903,7 @@
         const favorite = state.favorites[index];
         if (!favorite) return;
         state.surname = favorite.surname || favorite.name.slice(0, -favorite.length);
+        state.surnameTouched = true;
         state.length = favorite.length === 3 ? 3 : 2;
         state.nameChars = Array.from({length: state.length}, (_, position) => favorite.chars[position] || '');
         favorite.chars.map(charByGlyph).filter(Boolean).forEach(item => {
@@ -1151,8 +1165,8 @@
       }));
       $('#character-grid').addEventListener('click', event => { const card = event.target.closest('[data-character]'); if (card) addToPool(card.dataset.character); });
       $('#pool-list').addEventListener('click', event => { const removeButton = event.target.closest('[data-remove]'); if (removeButton) addToPool(removeButton.dataset.remove); });
-      $('#surname-input').addEventListener('input', event => { state.surname = event.target.value.slice(0, 2); renderName(); renderPool(); persistState(); });
-      $('#surname-input').addEventListener('change', event => { state.surname = event.target.value.slice(0, 2); persistState(); });
+      $('#surname-input').addEventListener('input', event => { state.surname = event.target.value.slice(0, 2); state.surnameTouched = true; renderName(); renderPool(); persistState(); });
+      $('#surname-input').addEventListener('change', event => { state.surname = event.target.value.slice(0, 2); state.surnameTouched = true; persistState(); });
       $$('[data-length]').forEach(button => button.addEventListener('click', () => { state.length = Number(button.dataset.length); $$('[data-length]').forEach(item => item.setAttribute('aria-pressed', String(item === button))); state.nameChars = state.nameChars.slice(0, state.length); renderPool(); renderName(); persistState(); }));
       $('#slot-row').addEventListener('change', event => { const select = event.target.closest('[data-slot]'); if (!select) return; state.nameChars[Number(select.dataset.slot)] = select.value; renderName(); renderPool(); persistState(); });
       $('#pool-tips').addEventListener('click', event => {
