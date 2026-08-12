@@ -483,11 +483,12 @@
               <select id="ai-provider">
                 <option value="local">本地演示 · 无需接口</option>
                 <option value="zen">OpenCode Zen · 实时解释</option>
+                <option value="anthropic">Anthropic · Messages API</option>
               </select>
             </label>
-            <div id="zen-config-fields">
+            <div id="ai-config-fields">
               <div class="settings-grid">
-                <label class="settings-field" for="ai-format">请求格式
+                <label class="settings-field" id="ai-format-field" for="ai-format">请求格式
                   <select id="ai-format">
                     <option value="responses">Responses</option>
                     <option value="chat.completions">Chat Completions</option>
@@ -512,7 +513,7 @@
                 <span class="settings-key-row"><input id="ai-api-key" type="password" spellcheck="false" autocomplete="off" placeholder="sk-…" /><button type="button" id="toggle-api-key">显示</button></span>
               </label>
               <label class="settings-check"><input id="ai-persist-key" type="checkbox" />在此浏览器中保存 API Key（仅本机）</label>
-              <p class="settings-note"><strong>代理说明：</strong>页面会请求同源 <code>/api/zen</code>。部署到 Vercel 时由 <code>api/zen.js</code> 提供代理；本地可运行 <code>node server.js</code>，再访问 <code>http://127.0.0.1:4173</code>。代理只转发本次请求，不保存 Key，也不要提交隐私信息。</p>
+              <p class="settings-note" id="ai-protocol-note"><strong>代理说明：</strong>页面会请求同源 <code>/api/zen</code>。部署到 Vercel 时由 <code>api/zen.js</code> 提供代理；本地可运行 <code>node server.js</code>，再访问 <code>http://127.0.0.1:4173</code>。代理只转发本次请求，不保存 Key，也不要提交隐私信息。</p>
             </div>
             <section class="data-transfer" aria-labelledby="data-transfer-title">
               <div class="data-transfer-header"><h3 class="data-transfer-title" id="data-transfer-title">数据迁移</h3><p class="data-transfer-caption">仅包含候选池和喜欢的名字</p></div>
@@ -626,7 +627,7 @@
       </main>
 
       <footer class="footer">
-        <p>© 2026 见字起名 · AI 解释可使用本地演示或 OpenCode Zen</p>
+        <p>© 2026 见字起名 · AI 解释可使用本地演示、OpenCode Zen 或 Anthropic</p>
         <p>字库来源：<a href="https://www.kangxizidian.com.cn/wuxing/shui.html" target="_blank" rel="noreferrer">五行属水</a> / <a href="https://www.kangxizidian.com.cn/wuxing/mu.html" target="_blank" rel="noreferrer">五行属木</a> · <a href="https://www.kangxizidian.com.cn/wuxing/shui_jili.html" target="_blank" rel="noreferrer">吉字页</a></p>
       </footer>
     </div>
@@ -658,10 +659,16 @@
       const INITIAL_DEMO_POOL = ['清','梓','沐','和'];
       const DEFAULT_SURNAME = '钱';
       const AI_OUTPUT_TOKEN_LIMIT = 8192;
+      const ANTHROPIC_VERSION = '2023-06-01';
+      const AI_ENDPOINTS = {
+        responses: 'https://opencode.ai/zen/v1/responses',
+        'chat.completions': 'https://opencode.ai/zen/v1/chat/completions',
+        anthropic: 'https://api.anthropic.com/v1/messages'
+      };
       const DEFAULT_AI_CONFIG = {
         provider: 'local',
         format: 'responses',
-        baseUrl: 'https://opencode.ai/zen/v1/responses',
+        baseUrl: AI_ENDPOINTS.responses,
         model: 'gpt-5.5',
         apiKey: '',
         persistKey: false
@@ -672,10 +679,14 @@
           const saved = JSON.parse(localStorage.getItem(AI_STORAGE_KEY) || 'null');
           if (!saved || typeof saved !== 'object') return {...DEFAULT_AI_CONFIG};
           const persistKey = saved.persistKey === true;
+          const provider = ['zen', 'anthropic'].includes(saved.provider) ? saved.provider : 'local';
+          const format = provider === 'anthropic'
+            ? 'anthropic.messages'
+            : (saved.format === 'chat.completions' ? 'chat.completions' : 'responses');
           return {
-            provider: saved.provider === 'zen' ? 'zen' : 'local',
-            format: saved.format === 'chat.completions' ? 'chat.completions' : 'responses',
-            baseUrl: typeof saved.baseUrl === 'string' && saved.baseUrl.trim() ? saved.baseUrl.trim() : DEFAULT_AI_CONFIG.baseUrl,
+            provider,
+            format,
+            baseUrl: typeof saved.baseUrl === 'string' && saved.baseUrl.trim() ? saved.baseUrl.trim() : (provider === 'anthropic' ? AI_ENDPOINTS.anthropic : DEFAULT_AI_CONFIG.baseUrl),
             model: typeof saved.model === 'string' && saved.model.trim() ? saved.model.trim() : DEFAULT_AI_CONFIG.model,
             apiKey: persistKey && typeof saved.apiKey === 'string' ? saved.apiKey : '',
             persistKey
@@ -1132,27 +1143,30 @@
       }
 
       function getAIStatusLabel() {
-        if (state.aiConfig.provider !== 'zen') return '本地演示';
+        if (state.aiConfig.provider === 'local') return '本地演示';
         const keyStatus = state.aiConfig.apiKey ? '' : ' · 待配置 Key';
-        return `Zen · ${state.aiConfig.model}${keyStatus}`;
+        const service = state.aiConfig.provider === 'anthropic' ? 'Anthropic' : 'Zen';
+        return `${service} · ${state.aiConfig.model}${keyStatus}`;
       }
 
       function renderAIConfigStatus() {
         const button = $('#settings-open');
         const status = $('#settings-status');
-        if (button) button.title = state.aiConfig.provider === 'zen' ? `当前使用 OpenCode Zen：${state.aiConfig.model}` : '当前使用本地演示';
+        const provider = state.aiConfig.provider;
+        const service = provider === 'anthropic' ? 'Anthropic' : 'OpenCode Zen';
+        if (button) button.title = provider === 'local' ? '当前使用本地演示' : `当前使用 ${service}：${state.aiConfig.model}`;
         if (!status) return;
-        status.textContent = state.aiConfig.provider === 'zen'
-          ? (state.aiConfig.apiKey ? `已配置 Zen · ${state.aiConfig.model}` : '已选择 Zen，但尚未配置 API Key')
+        status.textContent = provider !== 'local'
+          ? (state.aiConfig.apiKey ? `已配置 ${service} · ${state.aiConfig.model}` : `已选择 ${service}，但尚未配置 API Key`)
           : '当前使用本地演示，不会产生接口请求';
-        status.classList.toggle('is-warning', state.aiConfig.provider === 'zen' && !state.aiConfig.apiKey);
+        status.classList.toggle('is-warning', provider !== 'local' && !state.aiConfig.apiKey);
       }
 
       function renderExplanation(data) {
         const summary = $('#ai-summary');
-        if (data.source === 'zen') summary.innerHTML = renderMarkdown(data.summary);
+        if (data.source !== 'local') summary.innerHTML = renderMarkdown(data.summary);
         else summary.textContent = data.summary;
-        summary.classList.toggle('is-markdown', data.source === 'zen');
+        summary.classList.toggle('is-markdown', data.source !== 'local');
         $('#meaning-list').innerHTML = (data.items || []).map(([glyph, meaning]) => `<div class="meaning-item"><span class="meaning-glyph">${escapeHTML(glyph)}</span><span><strong>${escapeHTML(glyph)} · 字义</strong><p>${escapeHTML(meaning)}</p></span></div>`).join('');
       }
 
@@ -1166,7 +1180,7 @@
         const data = state.aiExplanation?.name === currentName ? state.aiExplanation.data : localData;
         renderExplanation(data);
         const remoteData = state.aiExplanation?.name === currentName ? state.aiExplanation.data : null;
-        if (!state.loading) $('#ai-status').textContent = remoteData ? (remoteData.truncated ? 'Zen 已返回 · 内容被截断' : 'Zen 已返回') : getAIStatusLabel();
+        if (!state.loading) $('#ai-status').textContent = remoteData ? (remoteData.truncated ? 'AI 已返回 · 内容被截断' : 'AI 已返回') : getAIStatusLabel();
         renderFavoriteAction();
       }
 
@@ -1269,53 +1283,74 @@
         state.toastTimer = setTimeout(() => toast.classList.remove('is-visible'), 2200);
       }
 
-      const ZEN_ENDPOINTS = {
-        responses: 'https://opencode.ai/zen/v1/responses',
-        'chat.completions': 'https://opencode.ai/zen/v1/chat/completions'
-      };
-
       function renderSettingsFields() {
+        const provider = state.aiConfig.provider;
         $('#ai-provider').value = state.aiConfig.provider;
-        $('#ai-format').value = state.aiConfig.format;
+        $('#ai-format').value = provider === 'anthropic' ? 'responses' : state.aiConfig.format;
         $('#ai-base-url').value = state.aiConfig.baseUrl;
         $('#ai-model').value = state.aiConfig.model;
         $('#ai-api-key').value = state.aiConfig.apiKey;
         $('#ai-api-key').type = 'password';
         $('#toggle-api-key').textContent = '显示';
         $('#ai-persist-key').checked = state.aiConfig.persistKey;
-        $('#zen-config-fields').hidden = state.aiConfig.provider !== 'zen';
+        syncAIConfigFields();
         renderAIConfigStatus();
       }
 
-      function syncZenEndpoint() {
+      function syncAIConfigFields() {
+        const provider = $('#ai-provider').value;
+        const isRemote = provider !== 'local';
+        const isAnthropic = provider === 'anthropic';
+        $('#ai-config-fields').hidden = !isRemote;
+        $('#ai-format-field').hidden = isAnthropic;
+        $('#ai-base-url').placeholder = isAnthropic ? AI_ENDPOINTS.anthropic : AI_ENDPOINTS[$('#ai-format').value];
+        $('#ai-api-key').placeholder = isAnthropic ? 'sk-ant-…' : 'sk-…';
+        $('#ai-model').placeholder = isAnthropic ? '例如 claude-sonnet-4-20250514' : '例如 gpt-5.5';
+        const note = $('#ai-protocol-note');
+        if (note) note.innerHTML = isAnthropic
+          ? '<strong>Anthropic 说明：</strong>使用 Messages API（<code>/v1/messages</code>），代理会代为添加 <code>x-api-key</code> 与 <code>anthropic-version</code> 请求头。页面仍请求同源 <code>/api/zen</code>，本地运行 <code>node server.js</code>，Vercel 使用 <code>api/zen.js</code>。'
+          : '<strong>代理说明：</strong>页面会请求同源 <code>/api/zen</code>。部署到 Vercel 时由 <code>api/zen.js</code> 提供代理；本地可运行 <code>node server.js</code>，再访问 <code>http://127.0.0.1:4173</code>。代理只转发本次请求，不保存 Key，也不要提交隐私信息。';
+      }
+
+      function syncAIEndpoint() {
         const input = $('#ai-base-url');
         const current = input.value.trim();
-        if (!current || Object.values(ZEN_ENDPOINTS).includes(current)) input.value = ZEN_ENDPOINTS[$('#ai-format').value];
+        const provider = $('#ai-provider').value;
+        const defaultEndpoints = Object.values(AI_ENDPOINTS);
+        const nextEndpoint = provider === 'anthropic' ? AI_ENDPOINTS.anthropic : AI_ENDPOINTS[$('#ai-format').value];
+        if (!current || defaultEndpoints.includes(current)) input.value = nextEndpoint;
+        syncAIConfigFields();
       }
 
       function saveAISettings() {
-        const provider = $('#ai-provider').value === 'zen' ? 'zen' : 'local';
-        const format = $('#ai-format').value === 'chat.completions' ? 'chat.completions' : 'responses';
+        const selectedProvider = $('#ai-provider').value;
+        const provider = ['zen', 'anthropic'].includes(selectedProvider) ? selectedProvider : 'local';
+        const format = provider === 'anthropic' ? 'anthropic.messages' : ($('#ai-format').value === 'chat.completions' ? 'chat.completions' : 'responses');
         const baseUrl = $('#ai-base-url').value.trim();
         const model = $('#ai-model').value.trim();
         const apiKey = $('#ai-api-key').value.trim();
         const persistKey = $('#ai-persist-key').checked;
-        if (provider === 'zen' && !baseUrl) {
-          showToast('请填写 Zen 接口地址');
+        if (provider !== 'local' && !baseUrl) {
+          showToast(`请填写 ${provider === 'anthropic' ? 'Anthropic' : 'Zen'} 接口地址`);
           $('#ai-base-url').focus();
           return false;
         }
-        if (provider === 'zen' && !model) {
-          showToast('请填写 Zen 模型名称');
+        if (provider !== 'local' && !model) {
+          showToast(`请填写 ${provider === 'anthropic' ? 'Anthropic' : 'Zen'} 模型名称`);
           $('#ai-model').focus();
           return false;
         }
-        if (provider === 'zen' && !Object.values(ZEN_ENDPOINTS).includes(baseUrl)) {
+        if (provider === 'zen' && ![AI_ENDPOINTS.responses, AI_ENDPOINTS['chat.completions']].includes(baseUrl)) {
           showToast('当前代理只支持 OpenCode Zen 官方接口地址');
           $('#ai-base-url').focus();
           return false;
         }
-        if (provider === 'zen' && Object.values(ZEN_ENDPOINTS).includes(baseUrl)) {
+        if (provider === 'anthropic' && baseUrl !== AI_ENDPOINTS.anthropic) {
+          showToast('当前代理只支持 Anthropic 官方 Messages 接口地址');
+          $('#ai-base-url').focus();
+          return false;
+        }
+        if (provider === 'zen' && [AI_ENDPOINTS.responses, AI_ENDPOINTS['chat.completions']].includes(baseUrl)) {
           const chatOnlyFamily = /deepseek|glm|kimi|qwen|minimax/i;
           const responseOnlyFamily = /^(gpt|grok)-/i;
           if (chatOnlyFamily.test(model) && format !== 'chat.completions') {
@@ -1329,12 +1364,12 @@
             return false;
           }
         }
-        state.aiConfig = {provider, format, baseUrl: baseUrl || ZEN_ENDPOINTS[format], model: model || DEFAULT_AI_CONFIG.model, apiKey, persistKey};
+        state.aiConfig = {provider, format, baseUrl: baseUrl || (provider === 'anthropic' ? AI_ENDPOINTS.anthropic : AI_ENDPOINTS[format]), model: model || DEFAULT_AI_CONFIG.model, apiKey, persistKey};
         state.aiExplanation = null;
         persistAIConfig(state.aiConfig);
         renderAIConfigStatus();
         renderName();
-        showToast(provider === 'zen' ? 'Zen 设置已保存' : '已切换为本地演示');
+        showToast(provider === 'zen' ? 'Zen 设置已保存' : provider === 'anthropic' ? 'Anthropic 设置已保存' : '已切换为本地演示');
         return true;
       }
 
@@ -1400,7 +1435,9 @@
       }
 
       async function requestZenExplanation() {
-        if (!state.aiConfig.apiKey) throw new Error('请先在设置中填写 API Key，再使用 Zen 实时解释。');
+        const service = state.aiConfig.provider === 'anthropic' ? 'Anthropic' : 'Zen';
+        const isAnthropic = state.aiConfig.provider === 'anthropic';
+        if (!state.aiConfig.apiKey) throw new Error(`请先在设置中填写 API Key，再使用 ${service} 实时解释。`);
         if (!/^https?:\/\//i.test(state.aiConfig.baseUrl)) throw new Error('接口地址需要以 http:// 或 https:// 开头。');
         const systemPrompt = `# 角色定位
 
@@ -1544,20 +1581,27 @@
 只输出最终点评，不输出你的分析过程、检查清单、JSON 或 Markdown 代码块。`;
         const userPrompt = buildZenPrompt();
         const isDeepSeekModel = /deepseek/i.test(state.aiConfig.model);
-        const payload = state.aiConfig.format === 'chat.completions'
-          ? {model: state.aiConfig.model, messages: [{role: 'system', content: systemPrompt}, {role: 'user', content: userPrompt}], ...(isDeepSeekModel ? {thinking: {type: 'disabled'}} : {}), max_tokens: AI_OUTPUT_TOKEN_LIMIT}
-          : {model: state.aiConfig.model, instructions: systemPrompt, input: userPrompt, max_output_tokens: AI_OUTPUT_TOKEN_LIMIT};
+        const payload = isAnthropic
+          ? {model: state.aiConfig.model, system: systemPrompt, messages: [{role: 'user', content: userPrompt}], max_tokens: AI_OUTPUT_TOKEN_LIMIT}
+          : state.aiConfig.format === 'chat.completions'
+            ? {model: state.aiConfig.model, messages: [{role: 'system', content: systemPrompt}, {role: 'user', content: userPrompt}], ...(isDeepSeekModel ? {thinking: {type: 'disabled'}} : {}), max_tokens: AI_OUTPUT_TOKEN_LIMIT}
+            : {model: state.aiConfig.model, instructions: systemPrompt, input: userPrompt, max_output_tokens: AI_OUTPUT_TOKEN_LIMIT};
         const route = getZenRequestRoute();
-        const requestBody = route.proxy ? {apiKey: state.aiConfig.apiKey, baseUrl: state.aiConfig.baseUrl, payload} : payload;
+        const requestBody = route.proxy ? {provider: state.aiConfig.provider, apiKey: state.aiConfig.apiKey, baseUrl: state.aiConfig.baseUrl, payload} : payload;
+        const requestHeaders = route.proxy
+          ? {'Content-Type': 'application/json'}
+          : isAnthropic
+            ? {'Content-Type': 'application/json', 'x-api-key': state.aiConfig.apiKey, 'anthropic-version': ANTHROPIC_VERSION}
+            : {'Content-Type': 'application/json', 'Authorization': `Bearer ${state.aiConfig.apiKey}`};
         let response;
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 30000);
         try {
-          response = await fetch(route.url, {method: 'POST', credentials: 'omit', signal: controller.signal, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(requestBody)});
+          response = await fetch(route.url, {method: 'POST', credentials: 'omit', signal: controller.signal, headers: requestHeaders, body: JSON.stringify(requestBody)});
         } catch (error) {
-          if (error.name === 'AbortError') throw new Error('Zen 请求超时，请检查网络或稍后重试。');
+          if (error.name === 'AbortError') throw new Error(`${service} 请求超时，请检查网络或稍后重试。`);
           if (route.proxy) throw new Error('同源 /api/zen 代理未连接。纯静态站点需要配置服务器反向代理，或运行项目中的 server.js。');
-          throw new Error('Zen 请求未完成，请检查接口地址和网络连接。');
+          throw new Error(`${service} 请求未完成，请检查接口地址和网络连接。`);
         } finally {
           clearTimeout(timeoutId);
         }
@@ -1567,14 +1611,14 @@
         if (!response.ok) {
           const detail = data?.error?.message || data?.message || raw.slice(0, 160) || `HTTP ${response.status}`;
           if (route.proxy && (response.status === 404 || response.status === 405 || /^\s*</.test(raw))) throw new Error('当前站点没有 /api/zen 代理。纯静态部署需要配置反向代理，或改用项目中的 server.js 启动页面。');
-          throw new Error(`Zen 返回错误：${detail}`);
+          throw new Error(`${service} 返回错误：${detail}`);
         }
         if (route.proxy && /^\s*</.test(raw)) throw new Error('当前站点没有 /api/zen 代理。纯静态部署需要配置反向代理，或改用项目中的 server.js 启动页面。');
         const text = extractAIText(data);
-        const truncated = data?.choices?.[0]?.finish_reason === 'length' || data?.status === 'incomplete' || data?.incomplete_details?.reason === 'max_output_tokens';
+        const truncated = data?.choices?.[0]?.finish_reason === 'length' || data?.status === 'incomplete' || data?.incomplete_details?.reason === 'max_output_tokens' || data?.stop_reason === 'max_tokens';
         if (!text) {
-          if (truncated) throw new Error('Zen 已达到输出长度上限，但还没有生成最终正文。请再次解析。');
-          throw new Error('Zen 已返回，但没有找到可显示的文本内容。');
+          if (truncated) throw new Error(`${service} 已达到输出长度上限，但还没有生成最终正文。请再次解析。`);
+          throw new Error(`${service} 已返回，但没有找到可显示的文本内容。`);
         }
         return {text, truncated};
       }
@@ -1599,10 +1643,11 @@
         $('#ai-action').textContent = '正在整理这份心意…';
         $('#ai-status').innerHTML = 'AI 正在解析 <span class="ai-pulse"><i></i><i></i><i></i></span>';
         try {
-          if (state.aiConfig.provider === 'zen') {
+          if (state.aiConfig.provider !== 'local') {
             const result = await requestZenExplanation();
-            state.aiExplanation = {name: getCurrentName(), data: {summary: result.text, items: [], source: 'zen', truncated: result.truncated}};
-            showToast(result.truncated ? 'Zen 返回内容达到长度上限，已显示部分内容' : '已完成 Zen 实时解释');
+            const service = state.aiConfig.provider === 'anthropic' ? 'Anthropic' : 'Zen';
+            state.aiExplanation = {name: getCurrentName(), data: {summary: result.text, items: [], source: state.aiConfig.provider, truncated: result.truncated}};
+            showToast(result.truncated ? `${service} 返回内容达到长度上限，已显示部分内容` : `已完成 ${service} 实时解释`);
           } else {
             await new Promise(resolve => setTimeout(resolve, 720));
             state.aiExplanation = null;
@@ -1716,8 +1761,8 @@
           setTransferStatus(error.message || '导入失败，请选择见字起名导出的 JSON 文件', true);
         }
       });
-      $('#ai-provider').addEventListener('change', event => { $('#zen-config-fields').hidden = event.target.value !== 'zen'; });
-      $('#ai-format').addEventListener('change', syncZenEndpoint);
+      $('#ai-provider').addEventListener('change', syncAIEndpoint);
+      $('#ai-format').addEventListener('change', syncAIEndpoint);
       $('#toggle-api-key').addEventListener('click', () => {
         const input = $('#ai-api-key');
         const shouldShow = input.type === 'password';

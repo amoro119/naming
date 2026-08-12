@@ -2,6 +2,8 @@
 
 const MAX_BODY_BYTES = 1024 * 1024;
 const ALLOWED_ZEN_PATHS = new Set(['/zen/v1/responses', '/zen/v1/chat/completions']);
+const ALLOWED_ANTHROPIC_PATHS = new Set(['/v1/messages']);
+const ANTHROPIC_VERSION = '2023-06-01';
 
 export const maxDuration = 30;
 export const runtime = 'nodejs';
@@ -26,24 +28,19 @@ function jsonResponse(request, status, body) {
   });
 }
 
-function validateZenTarget(value) {
+function validateTarget(provider, value) {
   let target;
   try {
     target = new URL(value);
   } catch (error) {
-    throw new Error('Zen 接口地址无效');
+    throw new Error(`${provider === 'anthropic' ? 'Anthropic' : 'Zen'} 接口地址无效`);
   }
-  if (
-    target.protocol !== 'https:' ||
-    target.hostname !== 'opencode.ai' ||
-    (target.port && target.port !== '443') ||
-    target.username ||
-    target.password ||
-    target.search ||
-    target.hash ||
-    !ALLOWED_ZEN_PATHS.has(target.pathname)
-  ) {
-    throw new Error('Vercel 代理只允许转发 OpenCode Zen 官方接口');
+  const isAnthropic = provider === 'anthropic';
+  const valid = isAnthropic
+    ? target.protocol === 'https:' && target.hostname === 'api.anthropic.com' && (!target.port || target.port === '443') && ALLOWED_ANTHROPIC_PATHS.has(target.pathname)
+    : target.protocol === 'https:' && target.hostname === 'opencode.ai' && (!target.port || target.port === '443') && ALLOWED_ZEN_PATHS.has(target.pathname);
+  if (!valid || target.username || target.password || target.search || target.hash) {
+    throw new Error(isAnthropic ? 'Vercel 代理只允许转发 Anthropic 官方 Messages 接口' : 'Vercel 代理只允许转发 OpenCode Zen 官方接口');
   }
   return target;
 }
@@ -88,13 +85,14 @@ export async function POST(request) {
   if (typeof body.apiKey !== 'string' || !body.apiKey.trim()) {
     return jsonResponse(request, 400, {error: {message: '缺少 API Key'}});
   }
+  const provider = body.provider === 'anthropic' ? 'anthropic' : 'zen';
   if (!body.payload || typeof body.payload !== 'object' || Array.isArray(body.payload)) {
     return jsonResponse(request, 400, {error: {message: '缺少有效的 AI 请求参数'}});
   }
 
   let target;
   try {
-    target = validateZenTarget(body.baseUrl);
+    target = validateTarget(provider, body.baseUrl);
   } catch (error) {
     return jsonResponse(request, 400, {error: {message: error.message}});
   }
@@ -107,7 +105,9 @@ export async function POST(request) {
       signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${body.apiKey.trim()}`
+        ...(provider === 'anthropic'
+          ? {'x-api-key': body.apiKey.trim(), 'anthropic-version': ANTHROPIC_VERSION}
+          : {'Authorization': `Bearer ${body.apiKey.trim()}`})
       },
       body: JSON.stringify(body.payload)
     });
@@ -117,7 +117,8 @@ export async function POST(request) {
       headers: responseHeaders(request, upstream.headers.get('content-type') || 'application/json; charset=utf-8')
     });
   } catch (error) {
-    const message = error.name === 'AbortError' ? 'Zen 请求超时' : 'Vercel 代理无法连接 Zen';
+    const service = provider === 'anthropic' ? 'Anthropic' : 'Zen';
+    const message = error.name === 'AbortError' ? `${service} 请求超时` : `Vercel 代理无法连接 ${service}`;
     return jsonResponse(request, 502, {error: {message}});
   } finally {
     clearTimeout(timeout);
