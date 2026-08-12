@@ -1354,7 +1354,9 @@
         const defaultEndpoints = Object.values(AI_ENDPOINTS);
         const nextEndpoint = provider === 'anthropic' ? AI_ENDPOINTS.anthropic : AI_ENDPOINTS[$('#ai-format').value];
         const providerChanged = event?.target?.id === 'ai-provider' && $('#ai-provider').dataset.previousProvider !== provider;
-        if (!current || defaultEndpoints.includes(current) || providerChanged) input.value = nextEndpoint;
+        const formatChanged = event?.target?.id === 'ai-format';
+        const kimiChatEndpoint = provider === 'zen' && isKimiOpenAIEndpoint(current);
+        if (!current || defaultEndpoints.includes(current) || providerChanged || (formatChanged && (!kimiChatEndpoint || $('#ai-format').value !== 'chat.completions'))) input.value = nextEndpoint;
         if (event?.target?.id === 'ai-provider') $('#ai-provider').dataset.previousProvider = provider;
         syncAIConfigFields();
       }
@@ -1389,9 +1391,9 @@
           $('#ai-model').focus();
           return false;
         }
-        if (provider === 'zen' && isKimiOpenAIEndpoint(baseUrl)) {
-          format = 'chat.completions';
-          $('#ai-format').value = format;
+        if (provider === 'zen' && isKimiOpenAIEndpoint(baseUrl) && format === 'responses') {
+          baseUrl = getZenEndpoint(format);
+          $('#ai-base-url').value = baseUrl;
         }
         if (provider === 'zen' && !isOpenAICompatibleEndpoint(baseUrl)) {
           baseUrl = getZenEndpoint(format);
@@ -1401,20 +1403,6 @@
           showToast('Anthropic 地址需为官方接口或 Kimi Coding 地址');
           $('#ai-base-url').focus();
           return false;
-        }
-        if (provider === 'zen' && isZenEndpoint(baseUrl)) {
-          const chatOnlyFamily = /deepseek|glm|kimi|qwen|minimax/i;
-          const responseOnlyFamily = /^(gpt|grok)-/i;
-          if (chatOnlyFamily.test(model) && format !== 'chat.completions') {
-            showToast('该模型通常使用 Chat Completions，请切换请求格式');
-            $('#ai-format').focus();
-            return false;
-          }
-          if (responseOnlyFamily.test(model) && format !== 'responses') {
-            showToast('该模型通常使用 Responses，请切换请求格式');
-            $('#ai-format').focus();
-            return false;
-          }
         }
         state.aiConfig = {provider, format, baseUrl: baseUrl || (provider === 'anthropic' ? AI_ENDPOINTS.anthropic : getZenEndpoint(format)), model: model || DEFAULT_AI_CONFIG.model, apiKey, persistKey};
         state.aiExplanation = null;
@@ -1797,7 +1785,9 @@
       $('#settings-open').addEventListener('click', () => { renderSettingsFields(); $('#settings-dialog').showModal(); });
       $('#settings-close').addEventListener('click', () => $('#settings-dialog').close());
       $('#settings-cancel').addEventListener('click', () => $('#settings-dialog').close());
-      $('#settings-dialog').addEventListener('click', event => { if (event.target === $('#settings-dialog')) $('#settings-dialog').close(); });
+      const settingsDialog = $('#settings-dialog');
+      settingsDialog.addEventListener('click', event => { if (event.button === 0 && event.target === settingsDialog) settingsDialog.close(); });
+      settingsDialog.addEventListener('contextmenu', event => { if (event.target === settingsDialog) event.preventDefault(); });
       $('#ai-settings-form').addEventListener('submit', event => { event.preventDefault(); if (saveAISettings()) $('#settings-dialog').close(); });
       $('#export-data').addEventListener('click', exportTransferData);
       $('#import-data').addEventListener('click', () => $('#import-data-input').click());
