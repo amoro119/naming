@@ -2,7 +2,7 @@
 
 const MAX_BODY_BYTES = 1024 * 1024;
 const ALLOWED_ZEN_PATHS = new Set(['/zen/v1/responses', '/zen/v1/chat/completions']);
-const ALLOWED_ANTHROPIC_PATHS = new Set(['/v1/messages']);
+const ALLOWED_ANTHROPIC_PATHS = new Set(['/v1/messages', '/coding', '/coding/v1/messages']);
 const ANTHROPIC_VERSION = '2023-06-01';
 
 export const maxDuration = 30;
@@ -37,10 +37,17 @@ function validateTarget(provider, value) {
   }
   const isAnthropic = provider === 'anthropic';
   const valid = isAnthropic
-    ? target.protocol === 'https:' && target.hostname === 'api.anthropic.com' && (!target.port || target.port === '443') && ALLOWED_ANTHROPIC_PATHS.has(target.pathname)
+    ? target.protocol === 'https:' && (!target.port || target.port === '443') && ((target.hostname === 'api.anthropic.com' && target.pathname === '/v1/messages') || (target.hostname === 'api.kimi.com' && ALLOWED_ANTHROPIC_PATHS.has(target.pathname)))
     : target.protocol === 'https:' && target.hostname === 'opencode.ai' && (!target.port || target.port === '443') && ALLOWED_ZEN_PATHS.has(target.pathname);
   if (!valid || target.username || target.password || target.search || target.hash) {
     throw new Error(isAnthropic ? 'Vercel 代理只允许转发 Anthropic 官方 Messages 接口' : 'Vercel 代理只允许转发 OpenCode Zen 官方接口');
+  }
+  return target;
+}
+
+function normalizeTarget(provider, target) {
+  if (provider === 'anthropic' && target.hostname === 'api.kimi.com' && target.pathname === '/coding') {
+    return new URL('/coding/v1/messages', target.origin);
   }
   return target;
 }
@@ -92,7 +99,7 @@ export async function POST(request) {
 
   let target;
   try {
-    target = validateTarget(provider, body.baseUrl);
+    target = normalizeTarget(provider, validateTarget(provider, body.baseUrl));
   } catch (error) {
     return jsonResponse(request, 400, {error: {message: error.message}});
   }

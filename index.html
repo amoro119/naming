@@ -478,7 +478,7 @@
             <div><h2 class="settings-title" id="settings-title">AI 服务设置</h2><p class="settings-caption">选择名字解释的来源，并保存你的接口参数。</p></div>
             <button type="button" class="settings-close" id="settings-close" aria-label="关闭设置">×</button>
           </div>
-          <form id="ai-settings-form">
+          <form id="ai-settings-form" autocomplete="off">
             <label class="settings-field" for="ai-provider">解释来源
               <select id="ai-provider">
                 <option value="local">本地演示 · 无需接口</option>
@@ -495,7 +495,7 @@
                   </select>
                 </label>
                 <label class="settings-field" for="ai-model">模型
-                  <input id="ai-model" list="zen-models" autocomplete="off" placeholder="例如 gpt-5.5" />
+                  <input id="ai-model" name="ai-model" list="zen-models" autocomplete="off" spellcheck="false" placeholder="例如 gpt-5.5" />
                   <datalist id="zen-models">
                     <option value="gpt-5.5"></option>
                     <option value="gpt-5.6-sol"></option>
@@ -510,7 +510,7 @@
                 <input id="ai-base-url" type="url" spellcheck="false" autocomplete="off" placeholder="https://opencode.ai/zen/v1/responses" />
               </label>
               <label class="settings-field" for="ai-api-key">API Key
-                <span class="settings-key-row"><input id="ai-api-key" type="password" spellcheck="false" autocomplete="off" placeholder="sk-…" /><button type="button" id="toggle-api-key">显示</button></span>
+                <span class="settings-key-row"><input id="ai-api-key" name="ai-api-key" type="password" spellcheck="false" autocomplete="new-password" placeholder="sk-…" /><button type="button" id="toggle-api-key">显示</button></span>
               </label>
               <label class="settings-check"><input id="ai-persist-key" type="checkbox" />在此浏览器中保存 API Key（仅本机）</label>
               <p class="settings-note" id="ai-protocol-note"><strong>代理说明：</strong>页面会请求同源 <code>/api/zen</code>。部署到 Vercel 时由 <code>api/zen.js</code> 提供代理；本地可运行 <code>node server.js</code>，再访问 <code>http://127.0.0.1:4173</code>。代理只转发本次请求，不保存 Key，也不要提交隐私信息。</p>
@@ -656,6 +656,8 @@
       const allChars = [...waterChars.map(([char, pinyin, strokes, meaning, style]) => ({char, pinyin, strokes, meaning, style, element:'water'})), ...woodChars.map(([char, pinyin, strokes, meaning, style]) => ({char, pinyin, strokes, meaning, style, element:'wood'}))];
       const STORAGE_KEY = 'jianzidingming-state-v1';
       const AI_STORAGE_KEY = 'jianzidingming-ai-config-v1';
+      const AI_MODEL_STORAGE_KEY = 'jianzidingming-ai-model-v1';
+      const AI_API_KEY_STORAGE_KEY = 'jianzidingming-ai-api-key-v1';
       const INITIAL_DEMO_POOL = ['清','梓','沐','和'];
       const DEFAULT_SURNAME = '钱';
       const AI_OUTPUT_TOKEN_LIMIT = 8192;
@@ -665,6 +667,18 @@
         'chat.completions': 'https://opencode.ai/zen/v1/chat/completions',
         anthropic: 'https://api.anthropic.com/v1/messages'
       };
+      function isAllowedAnthropicEndpoint(value) {
+        try {
+          const target = new URL(value);
+          const path = target.pathname.replace(/\/+$/, '') || '/';
+          return target.protocol === 'https:' && !target.username && !target.password && !target.search && !target.hash && (
+            (target.hostname === 'api.anthropic.com' && path === '/v1/messages') ||
+            (target.hostname === 'api.kimi.com' && ['/coding', '/coding/v1/messages'].includes(path))
+          );
+        } catch (error) {
+          return false;
+        }
+      }
       const DEFAULT_AI_CONFIG = {
         provider: 'local',
         format: 'responses',
@@ -683,12 +697,14 @@
           const format = provider === 'anthropic'
             ? 'anthropic.messages'
             : (saved.format === 'chat.completions' ? 'chat.completions' : 'responses');
+          const storedModel = localStorage.getItem(AI_MODEL_STORAGE_KEY);
+          const storedApiKey = localStorage.getItem(AI_API_KEY_STORAGE_KEY);
           return {
             provider,
             format,
             baseUrl: typeof saved.baseUrl === 'string' && saved.baseUrl.trim() ? saved.baseUrl.trim() : (provider === 'anthropic' ? AI_ENDPOINTS.anthropic : DEFAULT_AI_CONFIG.baseUrl),
-            model: typeof saved.model === 'string' && saved.model.trim() ? saved.model.trim() : DEFAULT_AI_CONFIG.model,
-            apiKey: persistKey && typeof saved.apiKey === 'string' ? saved.apiKey : '',
+            model: typeof storedModel === 'string' && storedModel.trim() ? storedModel.trim() : (typeof saved.model === 'string' && saved.model.trim() ? saved.model.trim() : DEFAULT_AI_CONFIG.model),
+            apiKey: persistKey && typeof storedApiKey === 'string' ? storedApiKey : (persistKey && typeof saved.apiKey === 'string' ? saved.apiKey : ''),
             persistKey
           };
         } catch (error) {
@@ -701,12 +717,13 @@
           provider: config.provider,
           format: config.format,
           baseUrl: config.baseUrl,
-          model: config.model,
           persistKey: config.persistKey
         };
-        if (config.persistKey && config.apiKey) payload.apiKey = config.apiKey;
         try {
           localStorage.setItem(AI_STORAGE_KEY, JSON.stringify(payload));
+          localStorage.setItem(AI_MODEL_STORAGE_KEY, config.model || DEFAULT_AI_CONFIG.model);
+          if (config.persistKey && config.apiKey) localStorage.setItem(AI_API_KEY_STORAGE_KEY, config.apiKey);
+          else localStorage.removeItem(AI_API_KEY_STORAGE_KEY);
           state.aiStorageReady = true;
         } catch (error) {
           state.aiStorageReady = false;
@@ -1345,8 +1362,8 @@
           $('#ai-base-url').focus();
           return false;
         }
-        if (provider === 'anthropic' && baseUrl !== AI_ENDPOINTS.anthropic) {
-          showToast('当前代理只支持 Anthropic 官方 Messages 接口地址');
+        if (provider === 'anthropic' && !isAllowedAnthropicEndpoint(baseUrl)) {
+          showToast('Anthropic 地址需为官方接口或 Kimi Coding 地址');
           $('#ai-base-url').focus();
           return false;
         }
