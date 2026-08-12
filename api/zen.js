@@ -2,6 +2,7 @@
 
 const MAX_BODY_BYTES = 1024 * 1024;
 const ALLOWED_ZEN_PATHS = new Set(['/zen/v1/responses', '/zen/v1/chat/completions']);
+const ALLOWED_KIMI_OPENAI_PATHS = new Set(['/coding/v1', '/coding/v1/chat/completions']);
 const ALLOWED_ANTHROPIC_PATHS = new Set(['/v1/messages', '/coding', '/coding/v1/messages']);
 const ANTHROPIC_VERSION = '2023-06-01';
 
@@ -39,7 +40,7 @@ function validateTarget(provider, value) {
   const normalizedPath = target.pathname.replace(/\/+$/, '') || '/';
   const valid = isAnthropic
     ? target.protocol === 'https:' && (!target.port || target.port === '443') && ((target.hostname === 'api.anthropic.com' && normalizedPath === '/v1/messages') || (target.hostname === 'api.kimi.com' && ALLOWED_ANTHROPIC_PATHS.has(normalizedPath)))
-    : target.protocol === 'https:' && target.hostname === 'opencode.ai' && (!target.port || target.port === '443') && ALLOWED_ZEN_PATHS.has(normalizedPath);
+    : target.protocol === 'https:' && (!target.port || target.port === '443') && ((target.hostname === 'opencode.ai' && ALLOWED_ZEN_PATHS.has(normalizedPath)) || (target.hostname === 'api.kimi.com' && ALLOWED_KIMI_OPENAI_PATHS.has(normalizedPath)));
   if (!valid || target.username || target.password || target.search || target.hash) {
     throw new Error(isAnthropic ? 'Vercel 代理只允许转发 Anthropic 官方 Messages 接口' : 'Vercel 代理只允许转发 OpenCode Zen 的 OpenAI API 兼容接口');
   }
@@ -50,6 +51,9 @@ function normalizeTarget(provider, target) {
   const normalizedPath = target.pathname.replace(/\/+$/, '') || '/';
   if (provider === 'anthropic' && target.hostname === 'api.kimi.com' && normalizedPath === '/coding') {
     return new URL('/coding/v1/messages', target.origin);
+  }
+  if (provider === 'zen' && target.hostname === 'api.kimi.com' && normalizedPath === '/coding/v1') {
+    return new URL('/coding/v1/chat/completions', target.origin);
   }
   if (normalizedPath !== target.pathname) return new URL(`${normalizedPath}${target.search}`, target.origin);
   return target;
