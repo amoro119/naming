@@ -1350,6 +1350,10 @@
         return format === 'chat.completions' ? AI_ENDPOINTS['chat.completions'] : AI_ENDPOINTS.responses;
       }
 
+      function isZenEndpoint(value) {
+        return [AI_ENDPOINTS.responses, AI_ENDPOINTS['chat.completions']].includes(value);
+      }
+
       function saveAISettings() {
         const selectedProvider = $('#ai-provider').value;
         const provider = ['zen', 'anthropic'].includes(selectedProvider) ? selectedProvider : 'local';
@@ -1368,22 +1372,16 @@
           $('#ai-model').focus();
           return false;
         }
-        if (provider === 'zen' && ![AI_ENDPOINTS.responses, AI_ENDPOINTS['chat.completions']].includes(baseUrl)) {
-          if (isAllowedAnthropicEndpoint(baseUrl)) {
-            baseUrl = getZenEndpoint(format);
-            $('#ai-base-url').value = baseUrl;
-          } else {
-          showToast('当前代理只支持 OpenCode Zen 的 OpenAI API 兼容接口地址');
-            $('#ai-base-url').focus();
-            return false;
-          }
+        if (provider === 'zen' && !isZenEndpoint(baseUrl)) {
+          baseUrl = getZenEndpoint(format);
+          $('#ai-base-url').value = baseUrl;
         }
         if (provider === 'anthropic' && !isAllowedAnthropicEndpoint(baseUrl)) {
           showToast('Anthropic 地址需为官方接口或 Kimi Coding 地址');
           $('#ai-base-url').focus();
           return false;
         }
-        if (provider === 'zen' && [AI_ENDPOINTS.responses, AI_ENDPOINTS['chat.completions']].includes(baseUrl)) {
+        if (provider === 'zen' && isZenEndpoint(baseUrl)) {
           const chatOnlyFamily = /deepseek|glm|kimi|qwen|minimax/i;
           const responseOnlyFamily = /^(gpt|grok)-/i;
           if (chatOnlyFamily.test(model) && format !== 'chat.completions') {
@@ -1619,7 +1617,7 @@
           : state.aiConfig.format === 'chat.completions'
             ? {model: state.aiConfig.model, messages: [{role: 'system', content: systemPrompt}, {role: 'user', content: userPrompt}], ...(isDeepSeekModel ? {thinking: {type: 'disabled'}} : {}), max_tokens: AI_OUTPUT_TOKEN_LIMIT}
             : {model: state.aiConfig.model, instructions: systemPrompt, input: userPrompt, max_output_tokens: AI_OUTPUT_TOKEN_LIMIT};
-        const requestBaseUrl = state.aiConfig.provider === 'zen' && ![AI_ENDPOINTS.responses, AI_ENDPOINTS['chat.completions']].includes(state.aiConfig.baseUrl)
+        const requestBaseUrl = state.aiConfig.provider === 'zen' && !isZenEndpoint(state.aiConfig.baseUrl)
           ? getZenEndpoint(state.aiConfig.format)
           : state.aiConfig.baseUrl;
         const route = getZenRequestRoute();
