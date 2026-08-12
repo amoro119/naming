@@ -128,6 +128,8 @@
 
       .settings-dialog {
         width: min(470px, calc(100% - 28px));
+        max-height: calc(100vh - 28px);
+        overflow-y: auto;
         padding: 0;
         color: var(--ink);
         background: var(--surface);
@@ -154,6 +156,15 @@
       .settings-check input { width: 15px; height: 15px; accent-color: var(--river); }
       .settings-note { margin: 13px 0 0; padding: 10px 11px; color: #6e6657; background: #f5f1e7; border: 1px solid #e9dfcf; border-radius: 8px; font-size: 11px; line-height: 1.6; }
       .settings-note strong { color: #51493c; font-weight: 600; }
+      .data-transfer { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+      .data-transfer-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 5px; }
+      .data-transfer-title { margin: 0; color: var(--ink); font-size: 13px; font-weight: 500; }
+      .data-transfer-caption { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+      .data-transfer-actions { display: flex; gap: 8px; margin-top: 11px; }
+      .data-transfer-actions button { flex: 1; min-height: 36px; padding: 0 10px; color: var(--body); background: var(--surface-soft); border: 1px solid var(--line); border-radius: 8px; font-size: 11px; }
+      .data-transfer-actions button:hover { color: var(--ink); background: var(--river-soft); border-color: #a9c5bf; }
+      .data-transfer-status { min-height: 16px; margin: 8px 0 0; color: var(--river); font-size: 10px; line-height: 1.5; }
+      .data-transfer-status.is-error { color: var(--coral); }
       .settings-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 19px; }
       .settings-actions button { min-height: 38px; padding: 0 14px; border-radius: 8px; font-size: 12px; }
       .settings-cancel { color: var(--body); background: var(--surface-soft); border: 1px solid var(--line); }
@@ -503,6 +514,12 @@
               <label class="settings-check"><input id="ai-persist-key" type="checkbox" />在此浏览器中保存 API Key（仅本机）</label>
               <p class="settings-note"><strong>代理说明：</strong>页面会请求同源 <code>/api/zen</code>。部署到 Vercel 时由 <code>api/zen.js</code> 提供代理；本地可运行 <code>node server.js</code>，再访问 <code>http://127.0.0.1:4173</code>。代理只转发本次请求，不保存 Key，也不要提交隐私信息。</p>
             </div>
+            <section class="data-transfer" aria-labelledby="data-transfer-title">
+              <div class="data-transfer-header"><h3 class="data-transfer-title" id="data-transfer-title">数据迁移</h3><p class="data-transfer-caption">仅包含候选池和喜欢的名字</p></div>
+              <div class="data-transfer-actions"><button type="button" id="export-data">导出数据</button><button type="button" id="import-data">导入数据</button></div>
+              <input id="import-data-input" type="file" accept="application/json,.json" hidden />
+              <p class="data-transfer-status" id="data-transfer-status" role="status" aria-live="polite"></p>
+            </section>
             <div class="settings-status" id="settings-status" role="status" aria-live="polite"></div>
             <div class="settings-actions"><button type="button" class="settings-cancel" id="settings-cancel">取消</button><button type="submit" class="settings-save">保存设置</button></div>
           </form>
@@ -752,6 +769,102 @@
           state.storageReady = false;
           if (firstFailure && typeof showToast === 'function') showToast('浏览器未允许本地存储，刷新后内容可能丢失');
         }
+      }
+
+      function createTransferPayload() {
+        return {
+          format: 'jianzidingming-transfer',
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          pool: state.pool.map(item => item.char),
+          favorites: state.favorites.map(entry => ({
+            id: entry.id,
+            name: entry.name,
+            surname: entry.surname,
+            length: entry.length,
+            chars: entry.chars,
+            savedAt: entry.savedAt
+          }))
+        };
+      }
+
+      function setTransferStatus(message, isError = false) {
+        const status = $('#data-transfer-status');
+        if (!status) return;
+        status.textContent = message;
+        status.classList.toggle('is-error', isError);
+      }
+
+      function normalizeImportedFavorite(entry, index) {
+        if (!entry || typeof entry !== 'object') return null;
+        const chars = Array.isArray(entry.chars)
+          ? entry.chars.map(String).filter(char => charByGlyph(char)).slice(0, 3)
+          : [];
+        const name = typeof entry.name === 'string' ? entry.name.trim().slice(0, 12) : '';
+        if (!name || !chars.length || (entry.length !== 2 && entry.length !== 3)) return null;
+        return {
+          id: typeof entry.id === 'string' && entry.id ? entry.id : `imported-${Date.now()}-${index}`,
+          name,
+          surname: typeof entry.surname === 'string' ? entry.surname.slice(0, 2) : name.slice(0, -entry.length),
+          length: entry.length,
+          chars,
+          savedAt: Number(entry.savedAt) || Date.now()
+        };
+      }
+
+      function importTransferData(payload) {
+        if (!payload || typeof payload !== 'object' || (payload.format && payload.format !== 'jianzidingming-transfer')) {
+          throw new Error('文件不是见字起名的数据备份');
+        }
+        const importedChars = Array.isArray(payload.pool) ? payload.pool.map(String).map(charByGlyph).filter(Boolean) : [];
+        const importedFavorites = Array.isArray(payload.favorites)
+          ? payload.favorites.map(normalizeImportedFavorite).filter(Boolean)
+          : [];
+        if (!importedChars.length && !importedFavorites.length) throw new Error('文件中没有可导入的候选池或喜欢的名字');
+        let addedPoolCount = 0;
+        let addedFavoriteCount = 0;
+        const poolChars = new Set(state.pool.map(item => item.char));
+        importedChars.forEach(item => {
+          if (!poolChars.has(item.char)) {
+            state.pool.push(item);
+            poolChars.add(item.char);
+            addedPoolCount += 1;
+          }
+        });
+        const favoriteNames = new Set(state.favorites.map(entry => entry.name));
+        importedFavorites.forEach(entry => {
+          if (!favoriteNames.has(entry.name)) {
+            state.favorites.push(entry);
+            favoriteNames.add(entry.name);
+            addedFavoriteCount += 1;
+          }
+          entry.chars.map(charByGlyph).filter(Boolean).forEach(item => {
+            if (!poolChars.has(item.char)) {
+              state.pool.push(item);
+              poolChars.add(item.char);
+              addedPoolCount += 1;
+            }
+          });
+        });
+        persistState();
+        renderLibrary();
+        renderPool();
+        renderName();
+        renderFavorites();
+        return {poolCount: addedPoolCount, favoriteCount: addedFavoriteCount};
+      }
+
+      function exportTransferData() {
+        const blob = new Blob([JSON.stringify(createTransferPayload(), null, 2)], {type: 'application/json;charset=utf-8'});
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `见字起名数据-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        setTransferStatus(`已导出 ${state.pool.length} 枚候选字、${state.favorites.length} 个喜欢的名字`);
       }
 
       const savedState = loadPersistedState();
@@ -1072,7 +1185,7 @@
         const list = $('#favorites-list');
         $('#favorite-count').textContent = state.favorites.length;
         if (!state.favorites.length) {
-          list.innerHTML = '<div class="favorites-empty">还没有标记喜欢的名字。组合出满意的名字后，点击预览旁边的“喜欢这个名字”。</div>';
+          list.innerHTML = '<div class="favorites-empty">还没有标记喜欢的名字。在起名栏组合出满意的名字后，点击“喜欢这个名字”即可收藏。</div>';
           return;
         }
         list.innerHTML = state.favorites.map((entry, index) => {
@@ -1588,6 +1701,21 @@
       $('#settings-cancel').addEventListener('click', () => $('#settings-dialog').close());
       $('#settings-dialog').addEventListener('click', event => { if (event.target === $('#settings-dialog')) $('#settings-dialog').close(); });
       $('#ai-settings-form').addEventListener('submit', event => { event.preventDefault(); if (saveAISettings()) $('#settings-dialog').close(); });
+      $('#export-data').addEventListener('click', exportTransferData);
+      $('#import-data').addEventListener('click', () => $('#import-data-input').click());
+      $('#import-data-input').addEventListener('change', async event => {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (!file) return;
+        try {
+          const payload = JSON.parse(await file.text());
+          const result = importTransferData(payload);
+          setTransferStatus(`已合并 ${result.poolCount} 枚候选字、${result.favoriteCount} 个喜欢的名字`);
+          showToast('数据导入完成');
+        } catch (error) {
+          setTransferStatus(error.message || '导入失败，请选择见字起名导出的 JSON 文件', true);
+        }
+      });
       $('#ai-provider').addEventListener('change', event => { $('#zen-config-fields').hidden = event.target.value !== 'zen'; });
       $('#ai-format').addEventListener('change', syncZenEndpoint);
       $('#toggle-api-key').addEventListener('click', () => {
