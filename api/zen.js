@@ -33,22 +33,25 @@ function validateTarget(provider, value) {
   try {
     target = new URL(value);
   } catch (error) {
-    throw new Error(`${provider === 'anthropic' ? 'Anthropic' : 'Zen'} 接口地址无效`);
+    throw new Error(`${provider === 'anthropic' ? 'Anthropic' : 'OpenAI API'} 接口地址无效`);
   }
   const isAnthropic = provider === 'anthropic';
+  const normalizedPath = target.pathname.replace(/\/+$/, '') || '/';
   const valid = isAnthropic
-    ? target.protocol === 'https:' && (!target.port || target.port === '443') && ((target.hostname === 'api.anthropic.com' && target.pathname === '/v1/messages') || (target.hostname === 'api.kimi.com' && ALLOWED_ANTHROPIC_PATHS.has(target.pathname)))
-    : target.protocol === 'https:' && target.hostname === 'opencode.ai' && (!target.port || target.port === '443') && ALLOWED_ZEN_PATHS.has(target.pathname);
+    ? target.protocol === 'https:' && (!target.port || target.port === '443') && ((target.hostname === 'api.anthropic.com' && normalizedPath === '/v1/messages') || (target.hostname === 'api.kimi.com' && ALLOWED_ANTHROPIC_PATHS.has(normalizedPath)))
+    : target.protocol === 'https:' && target.hostname === 'opencode.ai' && (!target.port || target.port === '443') && ALLOWED_ZEN_PATHS.has(normalizedPath);
   if (!valid || target.username || target.password || target.search || target.hash) {
-    throw new Error(isAnthropic ? 'Vercel 代理只允许转发 Anthropic 官方 Messages 接口' : 'Vercel 代理只允许转发 OpenCode Zen 官方接口');
+    throw new Error(isAnthropic ? 'Vercel 代理只允许转发 Anthropic 官方 Messages 接口' : 'Vercel 代理只允许转发 OpenCode Zen 的 OpenAI API 兼容接口');
   }
   return target;
 }
 
 function normalizeTarget(provider, target) {
-  if (provider === 'anthropic' && target.hostname === 'api.kimi.com' && target.pathname === '/coding') {
+  const normalizedPath = target.pathname.replace(/\/+$/, '') || '/';
+  if (provider === 'anthropic' && target.hostname === 'api.kimi.com' && normalizedPath === '/coding') {
     return new URL('/coding/v1/messages', target.origin);
   }
+  if (normalizedPath !== target.pathname) return new URL(`${normalizedPath}${target.search}`, target.origin);
   return target;
 }
 
@@ -124,7 +127,7 @@ export async function POST(request) {
       headers: responseHeaders(request, upstream.headers.get('content-type') || 'application/json; charset=utf-8')
     });
   } catch (error) {
-    const service = provider === 'anthropic' ? 'Anthropic' : 'Zen';
+    const service = provider === 'anthropic' ? 'Anthropic' : 'OpenAI API';
     const message = error.name === 'AbortError' ? `${service} 请求超时` : `Vercel 代理无法连接 ${service}`;
     return jsonResponse(request, 502, {error: {message}});
   } finally {
