@@ -1354,9 +1354,7 @@
         const defaultEndpoints = Object.values(AI_ENDPOINTS);
         const nextEndpoint = provider === 'anthropic' ? AI_ENDPOINTS.anthropic : AI_ENDPOINTS[$('#ai-format').value];
         const providerChanged = event?.target?.id === 'ai-provider' && $('#ai-provider').dataset.previousProvider !== provider;
-        const formatChanged = event?.target?.id === 'ai-format';
-        const kimiChatEndpoint = provider === 'zen' && isKimiOpenAIEndpoint(current);
-        if (!current || defaultEndpoints.includes(current) || providerChanged || (formatChanged && (!kimiChatEndpoint || $('#ai-format').value !== 'chat.completions'))) input.value = nextEndpoint;
+        if (!current || defaultEndpoints.includes(current) || providerChanged) input.value = nextEndpoint;
         if (event?.target?.id === 'ai-provider') $('#ai-provider').dataset.previousProvider = provider;
         syncAIConfigFields();
       }
@@ -1392,8 +1390,8 @@
           return false;
         }
         if (provider === 'zen' && isKimiOpenAIEndpoint(baseUrl) && format === 'responses') {
-          baseUrl = getZenEndpoint(format);
-          $('#ai-base-url').value = baseUrl;
+          format = 'chat.completions';
+          $('#ai-format').value = format;
         }
         if (provider === 'zen' && !isOpenAICompatibleEndpoint(baseUrl)) {
           baseUrl = getZenEndpoint(format);
