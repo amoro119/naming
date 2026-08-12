@@ -2,19 +2,21 @@
 
 const MAX_BODY_BYTES = 1024 * 1024;
 const ALLOWED_ZEN_PATHS = new Set(['/zen/v1/responses', '/zen/v1/chat/completions']);
-const ALLOWED_KIMI_OPENAI_PATHS = new Set(['/coding/v1', '/coding/v1/chat/completions']);
+const ALLOWED_KIMI_OPENAI_PATHS = new Set(['/coding/v1', '/coding/v1/responses', '/coding/v1/chat/completions']);
 const ALLOWED_ANTHROPIC_PATHS = new Set(['/v1/messages', '/coding', '/coding/v1/messages']);
 const ANTHROPIC_VERSION = '2023-06-01';
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 export const runtime = 'nodejs';
 
 function responseHeaders(request, contentType = 'application/json; charset=utf-8') {
   const headers = {
     'Content-Type': contentType,
     'Cache-Control': 'no-store',
+    'X-Naming-Proxy': '1',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type'
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Expose-Headers': 'X-Naming-Proxy'
   };
   const origin = request.headers.get('origin');
   const requestOrigin = new URL(request.url).origin;
@@ -47,13 +49,13 @@ function validateTarget(provider, value) {
   return target;
 }
 
-function normalizeTarget(provider, target) {
+function normalizeTarget(provider, format, target) {
   const normalizedPath = target.pathname.replace(/\/+$/, '') || '/';
   if (provider === 'anthropic' && target.hostname === 'api.kimi.com' && normalizedPath === '/coding') {
     return new URL('/coding/v1/messages', target.origin);
   }
-  if (provider === 'zen' && target.hostname === 'api.kimi.com' && normalizedPath === '/coding/v1') {
-    return new URL('/coding/v1/chat/completions', target.origin);
+  if (provider === 'zen' && target.hostname === 'api.kimi.com' && ALLOWED_KIMI_OPENAI_PATHS.has(normalizedPath)) {
+    return new URL(format === 'responses' ? '/coding/v1/responses' : '/coding/v1/chat/completions', target.origin);
   }
   if (normalizedPath !== target.pathname) return new URL(`${normalizedPath}${target.search}`, target.origin);
   return target;
@@ -100,19 +102,20 @@ export async function POST(request) {
     return jsonResponse(request, 400, {error: {message: '缺少 API Key'}});
   }
   const provider = body.provider === 'anthropic' ? 'anthropic' : 'zen';
+  const format = provider === 'anthropic' ? 'anthropic.messages' : (body.format === 'responses' ? 'responses' : 'chat.completions');
   if (!body.payload || typeof body.payload !== 'object' || Array.isArray(body.payload)) {
     return jsonResponse(request, 400, {error: {message: '缺少有效的 AI 请求参数'}});
   }
 
   let target;
   try {
-    target = normalizeTarget(provider, validateTarget(provider, body.baseUrl));
+    target = normalizeTarget(provider, format, validateTarget(provider, body.baseUrl));
   } catch (error) {
     return jsonResponse(request, 400, {error: {message: error.message}});
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  const timeout = setTimeout(() => controller.abort(), 55000);
   try {
     const upstream = await fetch(target, {
       method: 'POST',

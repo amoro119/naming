@@ -156,6 +156,8 @@
       .settings-check input { width: 15px; height: 15px; accent-color: var(--river); }
       .settings-note { margin: 13px 0 0; padding: 10px 11px; color: #6e6657; background: #f5f1e7; border: 1px solid #e9dfcf; border-radius: 8px; font-size: 11px; line-height: 1.6; }
       .settings-note strong { color: #51493c; font-weight: 600; }
+      .settings-endpoint-hint { min-height: 16px; margin: 6px 0 0; color: var(--muted); font-size: 10px; line-height: 1.55; }
+      .settings-endpoint-hint.is-warning { color: var(--coral); }
       .data-transfer { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
       .data-transfer-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 5px; }
       .data-transfer-title { margin: 0; color: var(--ink); font-size: 13px; font-weight: 500; }
@@ -483,7 +485,7 @@
               <select id="ai-provider">
                 <option value="local">本地演示 · 无需接口</option>
                 <option value="zen">OpenAI API · OpenCode Zen</option>
-                <option value="anthropic">Anthropic · Messages API</option>
+                <option value="anthropic">Anthropic 兼容 · Messages API</option>
               </select>
             </label>
             <div id="ai-config-fields">
@@ -502,13 +504,18 @@
                     <option value="gpt-5.6-terra"></option>
                     <option value="gpt-5.4-mini"></option>
                     <option value="deepseek-v4-pro"></option>
-                    <option value="kimi-k2.7-code"></option>
+                    <option value="kimi-for-coding"></option>
+                    <option value="kimi-for-coding-highspeed"></option>
+                    <option value="k3"></option>
+                    <option value="k3-256k"></option>
+                    <option value="claude-sonnet-4-20250514"></option>
                   </datalist>
                 </label>
               </div>
               <label class="settings-field" for="ai-base-url">接口地址
                 <input id="ai-base-url" type="url" spellcheck="false" autocomplete="off" placeholder="https://opencode.ai/zen/v1/responses" />
               </label>
+              <p class="settings-endpoint-hint" id="ai-endpoint-hint" role="status" aria-live="polite"></p>
               <label class="settings-field" for="ai-api-key">API Key
                 <span class="settings-key-row"><input id="ai-api-key" name="ai-api-key" type="password" spellcheck="false" autocomplete="new-password" placeholder="sk-…" /><button type="button" id="toggle-api-key">显示</button></span>
               </label>
@@ -658,9 +665,19 @@
       const AI_STORAGE_KEY = 'jianzidingming-ai-config-v1';
       const AI_MODEL_STORAGE_KEY = 'jianzidingming-ai-model-v1';
       const AI_API_KEY_STORAGE_KEY = 'jianzidingming-ai-api-key-v1';
+      const AI_PROFILES_STORAGE_KEY = 'jianzidingming-ai-profiles-v2';
+      const AI_MODEL_STORAGE_KEYS = {
+        zen: 'jianzidingming-openai-model-v2',
+        anthropic: 'jianzidingming-anthropic-model-v2'
+      };
+      const AI_API_KEY_STORAGE_KEYS = {
+        zen: 'jianzidingming-openai-api-key-v2',
+        anthropic: 'jianzidingming-anthropic-api-key-v2'
+      };
       const INITIAL_DEMO_POOL = ['清','梓','沐','和'];
       const DEFAULT_SURNAME = '钱';
       const AI_OUTPUT_TOKEN_LIMIT = 8192;
+      const AI_REQUEST_TIMEOUT_MS = 60000;
       const ANTHROPIC_VERSION = '2023-06-01';
       const AI_ENDPOINTS = {
         responses: 'https://opencode.ai/zen/v1/responses',
@@ -679,6 +696,10 @@
           return false;
         }
       }
+      function isKimiAnthropicEndpoint(value) {
+        const parsed = getNormalizedEndpointPath(value);
+        return Boolean(parsed && parsed.target.protocol === 'https:' && parsed.target.hostname === 'api.kimi.com' && !parsed.target.username && !parsed.target.password && !parsed.target.search && !parsed.target.hash && ['/coding', '/coding/v1/messages'].includes(parsed.path));
+      }
       function getNormalizedEndpointPath(value) {
         try {
           const target = new URL(value);
@@ -689,7 +710,7 @@
       }
       function isKimiOpenAIEndpoint(value) {
         const parsed = getNormalizedEndpointPath(value);
-        return Boolean(parsed && parsed.target.protocol === 'https:' && parsed.target.hostname === 'api.kimi.com' && !parsed.target.username && !parsed.target.password && !parsed.target.search && !parsed.target.hash && ['/coding/v1', '/coding/v1/chat/completions'].includes(parsed.path));
+        return Boolean(parsed && parsed.target.protocol === 'https:' && parsed.target.hostname === 'api.kimi.com' && !parsed.target.username && !parsed.target.password && !parsed.target.search && !parsed.target.hash && ['/coding/v1', '/coding/v1/responses', '/coding/v1/chat/completions'].includes(parsed.path));
       }
       const DEFAULT_AI_CONFIG = {
         provider: 'local',
@@ -700,43 +721,72 @@
         persistKey: false
       };
 
-      function loadAIConfig() {
+      function getDefaultAIProfile(provider) {
+        return provider === 'anthropic'
+          ? {provider, format: 'anthropic.messages', baseUrl: AI_ENDPOINTS.anthropic, model: 'claude-sonnet-4-20250514', apiKey: '', persistKey: false}
+          : {provider: 'zen', format: 'responses', baseUrl: AI_ENDPOINTS.responses, model: DEFAULT_AI_CONFIG.model, apiKey: '', persistKey: false};
+      }
+
+      function normalizeAIProfile(provider, saved = {}, storedModel = '', storedApiKey = '') {
+        const defaults = getDefaultAIProfile(provider);
+        const persistKey = saved.persistKey === true;
+        const baseUrl = typeof saved.baseUrl === 'string' && saved.baseUrl.trim() ? saved.baseUrl.trim() : defaults.baseUrl;
+        const candidateApiKey = persistKey && typeof storedApiKey === 'string' ? storedApiKey : (persistKey && typeof saved.apiKey === 'string' ? saved.apiKey : '');
+        return {
+          provider,
+          format: provider === 'anthropic' ? 'anthropic.messages' : (saved.format === 'chat.completions' ? 'chat.completions' : 'responses'),
+          baseUrl,
+          model: typeof storedModel === 'string' && storedModel.trim() ? storedModel.trim() : (typeof saved.model === 'string' && saved.model.trim() ? saved.model.trim() : defaults.model),
+          apiKey: candidateApiKey,
+          persistKey
+        };
+      }
+
+      function loadAIState() {
         try {
           const saved = JSON.parse(localStorage.getItem(AI_STORAGE_KEY) || 'null');
-          if (!saved || typeof saved !== 'object') return {...DEFAULT_AI_CONFIG};
-          const persistKey = saved.persistKey === true;
-          const provider = ['zen', 'anthropic'].includes(saved.provider) ? saved.provider : 'local';
-          const savedBaseUrl = typeof saved.baseUrl === 'string' && saved.baseUrl.trim() ? saved.baseUrl.trim() : '';
-          const format = provider === 'anthropic'
-            ? 'anthropic.messages'
-            : (isKimiOpenAIEndpoint(savedBaseUrl) || saved.format === 'chat.completions' ? 'chat.completions' : 'responses');
-          const storedModel = localStorage.getItem(AI_MODEL_STORAGE_KEY);
-          const storedApiKey = localStorage.getItem(AI_API_KEY_STORAGE_KEY);
+          const activeProvider = saved && ['zen', 'anthropic'].includes(saved.provider) ? saved.provider : 'local';
+          const storedProfiles = JSON.parse(localStorage.getItem(AI_PROFILES_STORAGE_KEY) || 'null');
+          const hasProfiles = storedProfiles && typeof storedProfiles === 'object';
+          const legacyModel = localStorage.getItem(AI_MODEL_STORAGE_KEY) || '';
+          const legacyApiKey = localStorage.getItem(AI_API_KEY_STORAGE_KEY) || '';
+          const profiles = {};
+          for (const provider of ['zen', 'anthropic']) {
+            const profileSource = hasProfiles && storedProfiles[provider] && typeof storedProfiles[provider] === 'object'
+              ? storedProfiles[provider]
+              : (!hasProfiles && activeProvider === provider && saved && typeof saved === 'object' ? saved : {});
+            const model = hasProfiles ? (localStorage.getItem(AI_MODEL_STORAGE_KEYS[provider]) || '') : (activeProvider === provider ? legacyModel : '');
+            // 旧版 Key 只迁移到当时正在使用的协议，不复制给其他协议。
+            const apiKey = hasProfiles ? (localStorage.getItem(AI_API_KEY_STORAGE_KEYS[provider]) || '') : (activeProvider === provider ? legacyApiKey : '');
+            profiles[provider] = normalizeAIProfile(provider, profileSource, model, apiKey);
+          }
           return {
-            provider,
-            format,
-            baseUrl: savedBaseUrl || (provider === 'anthropic' ? AI_ENDPOINTS.anthropic : DEFAULT_AI_CONFIG.baseUrl),
-            model: typeof storedModel === 'string' && storedModel.trim() ? storedModel.trim() : (typeof saved.model === 'string' && saved.model.trim() ? saved.model.trim() : DEFAULT_AI_CONFIG.model),
-            apiKey: persistKey && typeof storedApiKey === 'string' ? storedApiKey : (persistKey && typeof saved.apiKey === 'string' ? saved.apiKey : ''),
-            persistKey
+            profiles,
+            config: activeProvider === 'local' ? {...DEFAULT_AI_CONFIG} : {...profiles[activeProvider]}
           };
         } catch (error) {
-          return {...DEFAULT_AI_CONFIG};
+          return {
+            profiles: {zen: getDefaultAIProfile('zen'), anthropic: getDefaultAIProfile('anthropic')},
+            config: {...DEFAULT_AI_CONFIG}
+          };
         }
       }
 
       function persistAIConfig(config) {
-        const payload = {
-          provider: config.provider,
-          format: config.format,
-          baseUrl: config.baseUrl,
-          persistKey: config.persistKey
-        };
         try {
-          localStorage.setItem(AI_STORAGE_KEY, JSON.stringify(payload));
-          localStorage.setItem(AI_MODEL_STORAGE_KEY, config.model || DEFAULT_AI_CONFIG.model);
-          if (config.persistKey && config.apiKey) localStorage.setItem(AI_API_KEY_STORAGE_KEY, config.apiKey);
-          else localStorage.removeItem(AI_API_KEY_STORAGE_KEY);
+          if (['zen', 'anthropic'].includes(config.provider)) state.aiProfiles[config.provider] = {...config};
+          const profiles = {};
+          for (const provider of ['zen', 'anthropic']) {
+            const profile = state.aiProfiles[provider] || getDefaultAIProfile(provider);
+            profiles[provider] = {format: profile.format, baseUrl: profile.baseUrl, persistKey: profile.persistKey};
+            localStorage.setItem(AI_MODEL_STORAGE_KEYS[provider], profile.model || getDefaultAIProfile(provider).model);
+            if (profile.persistKey && profile.apiKey) localStorage.setItem(AI_API_KEY_STORAGE_KEYS[provider], profile.apiKey);
+            else localStorage.removeItem(AI_API_KEY_STORAGE_KEYS[provider]);
+          }
+          localStorage.setItem(AI_PROFILES_STORAGE_KEY, JSON.stringify(profiles));
+          localStorage.setItem(AI_STORAGE_KEY, JSON.stringify({provider: config.provider}));
+          localStorage.removeItem(AI_MODEL_STORAGE_KEY);
+          localStorage.removeItem(AI_API_KEY_STORAGE_KEY);
           state.aiStorageReady = true;
         } catch (error) {
           state.aiStorageReady = false;
@@ -909,6 +959,7 @@
       }
 
       const savedState = loadPersistedState();
+      const savedAIState = loadAIState();
       const state = {
         element: savedState.element || 'water',
         query: savedState.query || '',
@@ -926,7 +977,9 @@
         inspirationPairCount: 0,
         inspirationCursor: 0,
         inspirationSuggestions: [],
-        aiConfig: loadAIConfig(),
+        aiProfiles: savedAIState.profiles,
+        aiConfig: savedAIState.config,
+        aiSettingsDraftProfiles: null,
         aiExplanation: null,
         loading: false,
         storageReady: true,
@@ -1315,6 +1368,10 @@
 
       function renderSettingsFields() {
         const provider = state.aiConfig.provider;
+        state.aiSettingsDraftProfiles = {
+          zen: {...state.aiProfiles.zen},
+          anthropic: {...state.aiProfiles.anthropic}
+        };
         $('#ai-provider').value = state.aiConfig.provider;
         $('#ai-provider').dataset.previousProvider = provider;
         $('#ai-format').value = provider === 'anthropic' ? 'responses' : state.aiConfig.format;
@@ -1339,23 +1396,73 @@
         $('#ai-config-fields').hidden = !isRemote;
         $('#ai-format-field').hidden = isAnthropic;
         $('#ai-base-url').placeholder = isAnthropic ? AI_ENDPOINTS.anthropic : AI_ENDPOINTS[$('#ai-format').value];
-        $('#ai-api-key').placeholder = isAnthropic ? 'sk-ant-…' : 'sk-…';
+        $('#ai-api-key').placeholder = 'API Key';
         $('#ai-model').placeholder = isAnthropic ? '例如 claude-sonnet-4-20250514' : '例如 gpt-5.5';
         const note = $('#ai-protocol-note');
         if (note) note.innerHTML = isAnthropic
-          ? '<strong>Anthropic 说明：</strong>使用 Messages API（<code>/v1/messages</code>），代理会代为添加 <code>x-api-key</code> 与 <code>anthropic-version</code> 请求头。页面仍请求同源 <code>/api/zen</code>，本地运行 <code>node server.js</code>，Vercel 使用 <code>api/zen.js</code>。'
+          ? '<strong>Anthropic 兼容协议说明：</strong>使用 Messages API（<code>/v1/messages</code>）及 <code>x-api-key</code> 鉴权头。API Key 由接口服务商提供，并不要求必须来自 Anthropic；请确保 Key、接口地址与模型属于同一服务。页面仍请求同源 <code>/api/zen</code>。'
           : '<strong>OpenAI API 说明：</strong>OpenCode Zen 提供 OpenAI API 兼容接口，支持 Responses 与 Chat Completions。页面会请求同源 <code>/api/zen</code>，部署到 Vercel 时由 <code>api/zen.js</code> 提供代理；本地可运行 <code>node server.js</code>。代理只转发本次请求，不保存 Key，也不要提交隐私信息。';
+        renderEndpointCompatibility();
+      }
+
+      function renderEndpointCompatibility() {
+        const hint = $('#ai-endpoint-hint');
+        if (!hint) return;
+        const provider = $('#ai-provider').value;
+        const format = $('#ai-format').value;
+        const baseUrl = $('#ai-base-url').value.trim();
+        const kimiResponsesUnsupported = provider === 'zen' && format === 'responses' && isKimiOpenAIEndpoint(baseUrl);
+        const kimiAnthropic = provider === 'anthropic' && isKimiAnthropicEndpoint(baseUrl);
+        if (provider === 'anthropic') {
+          $('#ai-api-key').placeholder = kimiAnthropic ? 'Kimi Code API Key' : '服务商 API Key';
+          $('#ai-model').placeholder = kimiAnthropic ? '例如 kimi-for-coding' : '例如 claude-sonnet-4-20250514';
+        }
+        if (kimiResponsesUnsupported) {
+          hint.textContent = 'Kimi Coding 官方仅提供 Chat Completions。Responses 选择会原样保存并请求 /responses，但上游可能拒绝；页面不会替你更改请求格式。';
+        } else if (provider === 'anthropic' && isKimiAnthropicEndpoint(baseUrl)) {
+          hint.textContent = '当前使用 Kimi Coding 的 Anthropic 兼容接口；请填写该服务对应的 Key 和模型 ID。';
+        } else if (provider === 'zen' && isKimiOpenAIEndpoint(baseUrl)) {
+          hint.textContent = '当前使用 Kimi Coding 的 OpenAI 兼容接口；Base URL 会按所选格式补全请求路径。';
+        } else {
+          hint.textContent = '';
+        }
+        hint.classList.toggle('is-warning', kimiResponsesUnsupported);
+      }
+
+      function readAIProfileFromFields(provider) {
+        const defaults = getDefaultAIProfile(provider);
+        return {
+          provider,
+          format: provider === 'anthropic' ? 'anthropic.messages' : ($('#ai-format').value === 'chat.completions' ? 'chat.completions' : 'responses'),
+          baseUrl: $('#ai-base-url').value.trim() || defaults.baseUrl,
+          model: $('#ai-model').value.trim() || defaults.model,
+          apiKey: $('#ai-api-key').value.trim(),
+          persistKey: $('#ai-persist-key').checked
+        };
+      }
+
+      function writeAIProfileToFields(profile) {
+        $('#ai-format').value = profile.format === 'chat.completions' ? 'chat.completions' : 'responses';
+        $('#ai-base-url').value = profile.baseUrl;
+        $('#ai-model').value = profile.model;
+        $('#ai-api-key').value = profile.apiKey;
+        $('#ai-persist-key').checked = profile.persistKey;
       }
 
       function syncAIEndpoint(event) {
         const input = $('#ai-base-url');
-        const current = input.value.trim();
         const provider = $('#ai-provider').value;
-        const defaultEndpoints = Object.values(AI_ENDPOINTS);
-        const nextEndpoint = provider === 'anthropic' ? AI_ENDPOINTS.anthropic : AI_ENDPOINTS[$('#ai-format').value];
         const providerChanged = event?.target?.id === 'ai-provider' && $('#ai-provider').dataset.previousProvider !== provider;
-        if (!current || defaultEndpoints.includes(current) || providerChanged) input.value = nextEndpoint;
-        if (event?.target?.id === 'ai-provider') $('#ai-provider').dataset.previousProvider = provider;
+        if (providerChanged) {
+          const previousProvider = $('#ai-provider').dataset.previousProvider;
+          if (['zen', 'anthropic'].includes(previousProvider)) state.aiSettingsDraftProfiles[previousProvider] = readAIProfileFromFields(previousProvider);
+          if (['zen', 'anthropic'].includes(provider)) writeAIProfileToFields(state.aiSettingsDraftProfiles[provider]);
+          $('#ai-provider').dataset.previousProvider = provider;
+        } else if (provider === 'zen') {
+          const current = input.value.trim();
+          const defaultEndpoints = Object.values(AI_ENDPOINTS);
+          if (!current || defaultEndpoints.includes(current)) input.value = AI_ENDPOINTS[$('#ai-format').value];
+        }
         syncAIConfigFields();
       }
 
@@ -1374,7 +1481,7 @@
       function saveAISettings() {
         const selectedProvider = $('#ai-provider').value;
         const provider = ['zen', 'anthropic'].includes(selectedProvider) ? selectedProvider : 'local';
-        let format = provider === 'anthropic' ? 'anthropic.messages' : ($('#ai-format').value === 'chat.completions' ? 'chat.completions' : 'responses');
+        const format = provider === 'anthropic' ? 'anthropic.messages' : ($('#ai-format').value === 'chat.completions' ? 'chat.completions' : 'responses');
         let baseUrl = $('#ai-base-url').value.trim();
         const model = $('#ai-model').value.trim();
         const apiKey = $('#ai-api-key').value.trim();
@@ -1389,20 +1496,29 @@
           $('#ai-model').focus();
           return false;
         }
-        if (provider === 'zen' && isKimiOpenAIEndpoint(baseUrl) && format === 'responses') {
-          format = 'chat.completions';
-          $('#ai-format').value = format;
-        }
         if (provider === 'zen' && !isOpenAICompatibleEndpoint(baseUrl)) {
-          baseUrl = getZenEndpoint(format);
-          $('#ai-base-url').value = baseUrl;
+          showToast('OpenAI API 地址需为 OpenCode Zen 或 Kimi Coding 支持地址');
+          $('#ai-base-url').focus();
+          return false;
         }
         if (provider === 'anthropic' && !isAllowedAnthropicEndpoint(baseUrl)) {
           showToast('Anthropic 地址需为官方接口或 Kimi Coding 地址');
           $('#ai-base-url').focus();
           return false;
         }
-        state.aiConfig = {provider, format, baseUrl: baseUrl || (provider === 'anthropic' ? AI_ENDPOINTS.anthropic : getZenEndpoint(format)), model: model || DEFAULT_AI_CONFIG.model, apiKey, persistKey};
+        if (provider === 'zen' && isZenEndpoint(baseUrl)) baseUrl = getZenEndpoint(format);
+        const nextConfig = provider === 'local'
+          ? {...DEFAULT_AI_CONFIG}
+          : {provider, format, baseUrl, model, apiKey, persistKey};
+        if (state.aiSettingsDraftProfiles) {
+          state.aiProfiles = {
+            zen: {...state.aiSettingsDraftProfiles.zen},
+            anthropic: {...state.aiSettingsDraftProfiles.anthropic}
+          };
+        }
+        if (provider !== 'local') state.aiProfiles[provider] = {...nextConfig};
+        state.aiConfig = nextConfig;
+        state.aiSettingsDraftProfiles = null;
         state.aiExplanation = null;
         persistAIConfig(state.aiConfig);
         renderAIConfigStatus();
@@ -1626,7 +1742,7 @@
             : {model: state.aiConfig.model, instructions: systemPrompt, input: userPrompt, max_output_tokens: AI_OUTPUT_TOKEN_LIMIT};
         const requestBaseUrl = state.aiConfig.baseUrl;
         const route = getZenRequestRoute();
-        const requestBody = route.proxy ? {provider: state.aiConfig.provider, apiKey: state.aiConfig.apiKey, baseUrl: requestBaseUrl, payload} : payload;
+        const requestBody = route.proxy ? {provider: state.aiConfig.provider, format: state.aiConfig.format, apiKey: state.aiConfig.apiKey, baseUrl: requestBaseUrl, payload} : payload;
         const requestHeaders = route.proxy
           ? {'Content-Type': 'application/json'}
           : isAnthropic
@@ -1634,7 +1750,7 @@
             : {'Content-Type': 'application/json', 'Authorization': `Bearer ${state.aiConfig.apiKey}`};
         let response;
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000);
+        const timeoutId = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS);
         try {
           response = await fetch(route.url, {method: 'POST', credentials: 'omit', signal: controller.signal, headers: requestHeaders, body: JSON.stringify(requestBody)});
         } catch (error) {
@@ -1647,12 +1763,12 @@
         const raw = await response.text();
         let data = {};
         try { data = raw ? JSON.parse(raw) : {}; } catch (error) { data = {raw}; }
+        const proxyConnected = !route.proxy || response.headers.get('X-Naming-Proxy') === '1';
+        if (route.proxy && !proxyConnected) throw new Error('当前站点没有可用的 /api/zen 代理。请重新部署 Vercel 函数，或重启项目中的 server.js。');
         if (!response.ok) {
           const detail = data?.error?.message || data?.message || raw.slice(0, 160) || `HTTP ${response.status}`;
-          if (route.proxy && (response.status === 404 || response.status === 405 || /^\s*</.test(raw))) throw new Error('当前站点没有 /api/zen 代理。纯静态部署需要配置反向代理，或改用项目中的 server.js 启动页面。');
           throw new Error(`${service} 返回错误：${detail}`);
         }
-        if (route.proxy && /^\s*</.test(raw)) throw new Error('当前站点没有 /api/zen 代理。纯静态部署需要配置反向代理，或改用项目中的 server.js 启动页面。');
         const text = extractAIText(data);
         const truncated = data?.choices?.[0]?.finish_reason === 'length' || data?.status === 'incomplete' || data?.incomplete_details?.reason === 'max_output_tokens' || data?.stop_reason === 'max_tokens';
         if (!text) {
@@ -1781,10 +1897,11 @@
       });
       $('#ai-action').addEventListener('click', explainCurrentName);
       $('#settings-open').addEventListener('click', () => { renderSettingsFields(); $('#settings-dialog').showModal(); });
-      $('#settings-close').addEventListener('click', () => $('#settings-dialog').close());
-      $('#settings-cancel').addEventListener('click', () => $('#settings-dialog').close());
+      function closeSettingsDialog() { state.aiSettingsDraftProfiles = null; $('#settings-dialog').close(); }
+      $('#settings-close').addEventListener('click', closeSettingsDialog);
+      $('#settings-cancel').addEventListener('click', closeSettingsDialog);
       const settingsDialog = $('#settings-dialog');
-      settingsDialog.addEventListener('click', event => { if (event.button === 0 && event.target === settingsDialog) settingsDialog.close(); });
+      settingsDialog.addEventListener('click', event => { if (event.button === 0 && event.target === settingsDialog) closeSettingsDialog(); });
       settingsDialog.addEventListener('contextmenu', event => { if (event.target === settingsDialog) event.preventDefault(); });
       $('#ai-settings-form').addEventListener('submit', event => { event.preventDefault(); if (saveAISettings()) $('#settings-dialog').close(); });
       $('#export-data').addEventListener('click', exportTransferData);
@@ -1804,6 +1921,8 @@
       });
       $('#ai-provider').addEventListener('change', syncAIEndpoint);
       $('#ai-format').addEventListener('change', syncAIEndpoint);
+      $('#ai-base-url').addEventListener('input', renderEndpointCompatibility);
+      $('#ai-api-key').addEventListener('input', renderEndpointCompatibility);
       $('#toggle-api-key').addEventListener('click', () => {
         const input = $('#ai-api-key');
         const shouldShow = input.type === 'password';
