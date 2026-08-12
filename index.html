@@ -1901,7 +1901,27 @@
       $('#settings-close').addEventListener('click', closeSettingsDialog);
       $('#settings-cancel').addEventListener('click', closeSettingsDialog);
       const settingsDialog = $('#settings-dialog');
-      settingsDialog.addEventListener('click', event => { if (event.button === 0 && event.target === settingsDialog) closeSettingsDialog(); });
+      let backdropPointer = null;
+      settingsDialog.addEventListener('pointerdown', event => {
+        if (event.button !== 0 || event.target !== settingsDialog) {
+          backdropPointer = null;
+          return;
+        }
+        backdropPointer = {pointerId: event.pointerId, x: event.clientX, y: event.clientY};
+      });
+      settingsDialog.addEventListener('pointermove', event => {
+        if (!backdropPointer || event.pointerId !== backdropPointer.pointerId) return;
+        if (Math.hypot(event.clientX - backdropPointer.x, event.clientY - backdropPointer.y) > 6) backdropPointer = null;
+      });
+      settingsDialog.addEventListener('pointerup', event => {
+        const shouldClose = backdropPointer && event.pointerId === backdropPointer.pointerId && event.button === 0 && event.target === settingsDialog;
+        backdropPointer = null;
+        if (shouldClose) {
+          event.preventDefault();
+          closeSettingsDialog();
+        }
+      });
+      settingsDialog.addEventListener('click', event => { event.preventDefault(); });
       settingsDialog.addEventListener('contextmenu', event => { if (event.target === settingsDialog) event.preventDefault(); });
       $('#ai-settings-form').addEventListener('submit', event => { event.preventDefault(); if (saveAISettings()) $('#settings-dialog').close(); });
       $('#export-data').addEventListener('click', exportTransferData);
