@@ -677,7 +677,7 @@
       const INITIAL_DEMO_POOL = ['清','梓','沐','和'];
       const DEFAULT_SURNAME = '钱';
       const AI_OUTPUT_TOKEN_LIMIT = 8192;
-      const AI_REQUEST_TIMEOUT_MS = 60000;
+      const AI_REQUEST_TIMEOUT_MS = 295000;
       const ANTHROPIC_VERSION = '2023-06-01';
       const AI_ENDPOINTS = {
         responses: 'https://opencode.ai/zen/v1/responses',
@@ -1766,8 +1766,9 @@
         const proxyConnected = !route.proxy || response.headers.get('X-Naming-Proxy') === '1';
         if (route.proxy && !proxyConnected) throw new Error('当前站点没有可用的 /api/zen 代理。请重新部署 Vercel 函数，或重启项目中的 server.js。');
         if (!response.ok) {
-          const detail = data?.error?.message || data?.message || raw.slice(0, 160) || `HTTP ${response.status}`;
-          throw new Error(`${service} 返回错误：${detail}`);
+          const message = data?.error?.message || data?.message || raw.slice(0, 160) || `HTTP ${response.status}`;
+          const detail = data?.error?.detail && data.error.detail !== message ? `（${data.error.detail}）` : '';
+          throw new Error(`${service} 返回错误：${message}${detail}`);
         }
         const text = extractAIText(data);
         const truncated = data?.choices?.[0]?.finish_reason === 'length' || data?.status === 'incomplete' || data?.incomplete_details?.reason === 'max_output_tokens' || data?.stop_reason === 'max_tokens';
@@ -1921,7 +1922,7 @@
           closeSettingsDialog();
         }
       });
-      settingsDialog.addEventListener('click', event => { event.preventDefault(); });
+      settingsDialog.addEventListener('pointercancel', () => { backdropPointer = null; });
       settingsDialog.addEventListener('contextmenu', event => { if (event.target === settingsDialog) event.preventDefault(); });
       $('#ai-settings-form').addEventListener('submit', event => { event.preventDefault(); if (saveAISettings()) $('#settings-dialog').close(); });
       $('#export-data').addEventListener('click', exportTransferData);

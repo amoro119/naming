@@ -5,8 +5,9 @@ const ALLOWED_ZEN_PATHS = new Set(['/zen/v1/responses', '/zen/v1/chat/completion
 const ALLOWED_KIMI_OPENAI_PATHS = new Set(['/coding/v1', '/coding/v1/responses', '/coding/v1/chat/completions']);
 const ALLOWED_ANTHROPIC_PATHS = new Set(['/v1/messages', '/coding', '/coding/v1/messages']);
 const ANTHROPIC_VERSION = '2023-06-01';
+const UPSTREAM_TIMEOUT_MS = 285000;
 
-export const maxDuration = 60;
+export const config = {maxDuration: 300};
 export const runtime = 'nodejs';
 
 function requestOrigin(request) {
@@ -135,7 +136,7 @@ export default async function handler(request, response) {
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 55000);
+  const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
   try {
     const upstream = await fetch(target, {
       method: 'POST',
@@ -157,11 +158,11 @@ export default async function handler(request, response) {
     const service = provider === 'anthropic' ? 'Anthropic' : 'OpenAI API';
     const timeoutError = error.name === 'AbortError';
     const message = timeoutError ? `${service} 请求超时` : `Vercel 代理无法连接 ${service}`;
-    sendJson(request, response, 502, {
+    sendJson(request, response, timeoutError ? 504 : 502, {
       error: {
         message,
         code: timeoutError ? 'UPSTREAM_TIMEOUT' : (error.code || error.name || 'UPSTREAM_FETCH_FAILED'),
-        detail: timeoutError ? '上游接口在 55 秒内没有返回' : String(error.message || '').slice(0, 240)
+        detail: timeoutError ? '上游接口在 285 秒内没有返回' : String(error.message || '').slice(0, 240)
       }
     });
   } finally {
